@@ -27,6 +27,10 @@ fun StoryListScreen(navController: NavController, viewModel: StoryViewModel) {
     val allStories by viewModel.allStories.collectAsState(initial = emptyList())
     var searchQuery by remember { mutableStateOf("") }
 
+    LaunchedEffect(Unit) {
+        viewModel.loadInitialStoriesIfEmpty()
+    }
+
     val categories = listOf("All", "Funny", "Adult", "Long")
     val pagerState = rememberPagerState()
     val scope = rememberCoroutineScope()

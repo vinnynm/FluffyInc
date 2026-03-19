@@ -28,7 +28,6 @@ import com.enigma.fluffyinc.lists.presentation.components.sharePdf
 import com.enigma.fluffyinc.lists.presentation.navigation.Screen
 import com.enigma.fluffyinc.lists.presentation.components.EntryTagRow
 import com.enigma.fluffyinc.lists.presentation.components.ReminderPanel
-import com.notesapp.presentation.components.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -140,8 +139,10 @@ fun JournalDetailScreen(
 
     BiometricGate(
         locked = biometricLock && !isNew && loaded,
-        onUnlockSuccess = {},
-        onDisableLock = { biometricLock = false }
+        onUnlockSuccess = {
+            // Keep biometricLock as true so it remains locked for the next time
+            // The BiometricGate internally handles the 'authenticated' state to show content
+        }
     ) {
         Scaffold(
             containerColor = emotionColor.copy(alpha = 0.15f),

@@ -35,8 +35,9 @@ fun EpubReaderApp(viewModel: EpubReaderViewModel = viewModel()) {
         }
     }
 
-    // For Android 14+, we don't need storage permissions for document picker
+    // Load saved settings and last directory
     LaunchedEffect(Unit) {
+        viewModel.loadSettings(context)
         viewModel.setDirectoryAccess(true)
     }
 
@@ -49,10 +50,14 @@ fun EpubReaderApp(viewModel: EpubReaderViewModel = viewModel()) {
                     paddingValues = paddingValues,
                     epubContent = uiState.currentEpub!!,
                     currentChapterIndex = uiState.currentChapterIndex,
+                    fontSize = uiState.fontSize,
+                    theme = uiState.theme,
                     onCloseEpub = { viewModel.closeEpub() },
                     onNextChapter = { viewModel.nextChapter() },
                     onPreviousChapter = { viewModel.previousChapter() },
-                    onGoToChapter = { index -> viewModel.goToChapter(index) }
+                    onGoToChapter = { index -> viewModel.goToChapter(index) },
+                    onFontSizeChange = { size -> viewModel.setFontSize(size, context) },
+                    onThemeChange = { theme -> viewModel.setTheme(theme, context) }
                 )
             }
             else -> {

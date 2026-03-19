@@ -1,17 +1,32 @@
 package com.enigma.fluffyinc.apps.readables.epublibrary.ui
 
-
-
-
 import android.annotation.SuppressLint
 import android.webkit.WebView
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import com.enigma.fluffyinc.apps.readables.epublibrary.epubviewmodel.ReaderTheme
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun HtmlView(htmlContent: String, modifier: Modifier = Modifier) {
+fun HtmlView(
+    htmlContent: String,
+    fontSize: Int,
+    theme: ReaderTheme,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor = when (theme) {
+        ReaderTheme.LIGHT -> "#ffffff"
+        ReaderTheme.DARK -> "#121212"
+        ReaderTheme.SEPIA -> "#f4ecd8"
+    }
+
+    val textColor = when (theme) {
+        ReaderTheme.LIGHT -> "#000000"
+        ReaderTheme.DARK -> "#cccccc"
+        ReaderTheme.SEPIA -> "#5b4636"
+    }
+
     AndroidView(
         modifier = modifier,
         factory = { context ->
@@ -20,30 +35,22 @@ fun HtmlView(htmlContent: String, modifier: Modifier = Modifier) {
                 settings.loadWithOverviewMode = true
                 settings.useWideViewPort = true
                 settings.builtInZoomControls = true
-                // Optional: For better appearance matching the app theme
+                settings.displayZoomControls = false
                 setBackgroundColor(0x00000000) // Transparent
             }
         },
         update = { webView ->
-            // Injects CSS to style the HTML content.
-            // This example sets a text color and background that respects the system theme.
-            // You can expand this to include font size, margins, etc.
             val styledHtml = """
                 <html>
                     <head>
                         <style>
                             body {
-                                color: #cccccc; /* Light gray text for dark themes */
-                                background-color: #121212; /* Dark background */
-                                padding: 8px;
+                                color: $textColor;
+                                background-color: $backgroundColor;
+                                padding: 16px;
                                 font-family: sans-serif;
                                 line-height: 1.6;
-                            }
-                            @media (prefers-color-scheme: light) {
-                                body {
-                                    color: #333333; /* Dark text for light themes */
-                                    background-color: #ffffff; /* White background */
-                                }
+                                font-size: ${fontSize}%;
                             }
                             img {
                                 max-width: 100%;

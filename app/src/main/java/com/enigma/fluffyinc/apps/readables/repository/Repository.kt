@@ -21,6 +21,10 @@ class Repository(private val poemDao: PoemDao, private val storyDao: StoryDao) {
         poemDao.insertAll(poems)
     }
 
+    suspend fun insertStory(story: Story) {
+        storyDao.insert(story)
+    }
+
     suspend fun insertStories(stories: List<Story>) {
         storyDao.insertAll(stories)
     }

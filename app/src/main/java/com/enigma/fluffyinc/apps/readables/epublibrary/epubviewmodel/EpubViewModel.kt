@@ -26,13 +26,20 @@ import java.io.InputStream
 import java.util.zip.ZipInputStream
 import javax.xml.parsers.DocumentBuilderFactory
 
+enum class ReaderTheme {
+    LIGHT, DARK, SEPIA
+}
+
 data class EpubReaderUiState(
     val isLoading: Boolean = false,
     val isGridView: Boolean = true,
     val epubFiles: List<EpubFile> = emptyList(),
     val currentEpub: EpubContent? = null,
     val currentChapterIndex: Int = 0,
-    val hasDirectoryAccess: Boolean = false
+    val hasDirectoryAccess: Boolean = false,
+    val fontSize: Int = 100, // percentage
+    val theme: ReaderTheme = ReaderTheme.LIGHT,
+    val selectedDirectoryUri: String? = null
 )
 
 class EpubReaderViewModel : ViewModel() {
@@ -43,6 +50,52 @@ class EpubReaderViewModel : ViewModel() {
     private val _errorChannel = Channel<String>()
     val errorFlow = _errorChannel.receiveAsFlow()
 
+    private val PREFS_NAME = "epub_reader_prefs"
+    private val KEY_DIR_URI = "last_directory_uri"
+    private val KEY_FONT_SIZE = "font_size"
+    private val KEY_THEME = "reader_theme"
+
+    fun loadSettings(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val savedUri = prefs.getString(KEY_DIR_URI, null)
+        val savedFontSize = prefs.getInt(KEY_FONT_SIZE, 100)
+        val savedThemeName = prefs.getString(KEY_THEME, ReaderTheme.LIGHT.name)
+        val savedTheme = try { ReaderTheme.valueOf(savedThemeName!!) } catch (e: Exception) { ReaderTheme.LIGHT }
+
+        _uiState.update { it.copy(
+            selectedDirectoryUri = savedUri,
+            fontSize = savedFontSize,
+            theme = savedTheme
+        ) }
+
+        savedUri?.let {
+            scanForEpubFiles(Uri.parse(it), context)
+        }
+    }
+
+    private fun saveSetting(context: Context, key: String, value: Any) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(prefs.edit()) {
+            when (value) {
+                is String -> putString(key, value)
+                is Int -> putInt(key, value)
+                is Boolean -> putBoolean(key, value)
+                else -> {}
+            }
+            apply()
+        }
+    }
+
+    fun setFontSize(size: Int, context: Context) {
+        _uiState.update { it.copy(fontSize = size) }
+        saveSetting(context, KEY_FONT_SIZE, size)
+    }
+
+    fun setTheme(theme: ReaderTheme, context: Context) {
+        _uiState.update { it.copy(theme = theme) }
+        saveSetting(context, KEY_THEME, theme.name)
+    }
+
     fun setDirectoryAccess(hasAccess: Boolean) {
         _uiState.update { it.copy(hasDirectoryAccess = hasAccess) }
     }
@@ -52,6 +105,10 @@ class EpubReaderViewModel : ViewModel() {
     }
 
     fun scanForEpubFiles(directoryUri: Uri, context: Context) {
+        // Save the directory URI for persistence
+        _uiState.update { it.copy(selectedDirectoryUri = directoryUri.toString()) }
+        saveSetting(context, KEY_DIR_URI, directoryUri.toString())
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
@@ -71,35 +128,17 @@ class EpubReaderViewModel : ViewModel() {
         }
     }
 
-    // Assuming EpubFile and other functions are defined elsewhere:
-// data class EpubFile(val uri: Uri, val title: String, val author: String, val coverImage: ByteArray?, val fileName: String)
-// fun extractEpubMetadata(inputStream: InputStream): Pair<String, String> { ... }
-// fun extractCoverImageFromUri(uri: Uri, context: Context): ByteArray? { ... }
-
-    /**
-     * Recursively scans a directory for .epub files on a background thread.
-     *
-     * @param directory The starting DocumentFile directory to scan.
-     * @param epubList The mutable list to add found EpubFile objects to.
-     * @param context The application context to use for content resolving.
-     */
     private suspend fun scanDirectoryRecursively(
         directory: DocumentFile,
         epubList: MutableList<EpubFile>,
         context: Context
     ) {
-        // Switch to the IO dispatcher for safe file operations.
-        // This is crucial to avoid blocking the main thread.
         withContext(Dispatchers.IO) {
             try {
-                // Use a 'for' loop which allows suspend function calls inside it.
                 for (file in directory.listFiles()) {
                     when {
-                        // Case 1: The item is a file ending with .epub
                         file.isFile && file.name?.endsWith(".epub", ignoreCase = true) == true -> {
-                            // Use the contentResolver to safely open an InputStream.
                             context.contentResolver.openInputStream(file.uri)?.use { inputStream ->
-                                // Extract metadata and cover image (assuming these are defined elsewhere).
                                 val metadata = extractEpubMetadata(inputStream)
                                 val coverImage = extractCoverImageFromUri(file.uri, context)
 
@@ -114,16 +153,12 @@ class EpubReaderViewModel : ViewModel() {
                                 )
                             }
                         }
-                        // Case 2: The item is a directory
                         file.isDirectory -> {
-                            // Safely make the recursive call. Because this is inside a suspend function
-                            // and a 'for' loop, this is now allowed.
                             scanDirectoryRecursively(file, epubList, context)
                         }
                     }
                 }
             } catch (e: Exception) {
-                // It's good practice to log errors during file operations.
                 e.printStackTrace()
             }
         }
@@ -134,7 +169,7 @@ class EpubReaderViewModel : ViewModel() {
             _uiState.update { it.copy(isLoading = true) }
             try {
                 context.contentResolver.openInputStream(epubFile.uri)?.use { inputStream ->
-                    val content:EpubContent = parseEpubContent(inputStream)
+                    val content: EpubContent = parseEpubContent(inputStream)
                     _uiState.update { it.copy(
                         currentEpub = content,
                         currentChapterIndex = 0,
@@ -221,7 +256,6 @@ class EpubReaderViewModel : ViewModel() {
                 var opfPath = ""
                 val fileContents = mutableMapOf<String, ByteArray>()
 
-                // First pass: extract all files and find OPF
                 ZipInputStream(ByteArrayInputStream(zipData)).use { zip ->
                     var entry = zip.nextEntry
                     while (entry != null) {
@@ -232,7 +266,6 @@ class EpubReaderViewModel : ViewModel() {
                     }
                 }
 
-                // Find OPF and extract cover reference
                 val opfEntry = fileContents.entries.find { it.key.endsWith(".opf", ignoreCase = true) }
                 if (opfEntry != null) {
                     opfPath = opfEntry.key.substringBeforeLast('/', "")
@@ -241,7 +274,6 @@ class EpubReaderViewModel : ViewModel() {
                         .parse(ByteArrayInputStream(opfEntry.value))
                     doc.documentElement.normalize()
 
-                    // Find cover ID from metadata
                     var coverId: String? = null
                     val metaElements = doc.getElementsByTagName("meta")
                     for (i in 0 until metaElements.length) {
@@ -252,7 +284,6 @@ class EpubReaderViewModel : ViewModel() {
                         }
                     }
 
-                    // Find cover href from manifest
                     val itemElements = doc.getElementsByTagName("item")
                     for (i in 0 until itemElements.length) {
                         val item = itemElements.item(i) as Element
@@ -269,7 +300,6 @@ class EpubReaderViewModel : ViewModel() {
                     }
                 }
 
-                // Extract the cover image
                 if (coverHref != null) {
                     val fullPath = if (opfPath.isNotEmpty()) "$opfPath/$coverHref" else coverHref
                     val imageBytes = fileContents[fullPath]
@@ -293,7 +323,6 @@ class EpubReaderViewModel : ViewModel() {
             val zipData = inputStream.readBytes()
             val fileContents = mutableMapOf<String, ByteArray>()
 
-            // Extract all files
             ZipInputStream(ByteArrayInputStream(zipData)).use { zipStream ->
                 var entry = zipStream.nextEntry
                 while (entry != null) {
@@ -304,7 +333,6 @@ class EpubReaderViewModel : ViewModel() {
                 }
             }
 
-            // Find and parse OPF file
             val opfFileEntry = fileContents.entries.find { it.key.endsWith(".opf", ignoreCase = true) }
             if (opfFileEntry != null) {
                 val opfDoc = DocumentBuilderFactory.newInstance()
@@ -312,13 +340,11 @@ class EpubReaderViewModel : ViewModel() {
                     .parse(ByteArrayInputStream(opfFileEntry.value))
                 opfDoc.documentElement.normalize()
 
-                // Get book title
                 val titleElements = opfDoc.getElementsByTagName("dc:title")
                 if (titleElements.length > 0) {
                     bookTitle = titleElements.item(0).textContent.trim()
                 }
 
-                // Build manifest map (id -> href)
                 val manifestItems = mutableMapOf<String, String>()
                 val itemElements = opfDoc.getElementsByTagName("item")
                 for (i in 0 until itemElements.length) {
@@ -326,7 +352,6 @@ class EpubReaderViewModel : ViewModel() {
                     manifestItems[item.getAttribute("id")] = item.getAttribute("href")
                 }
 
-                // Get spine order
                 val spineElements = opfDoc.getElementsByTagName("itemref")
                 val opfPath = opfFileEntry.key.substringBeforeLast('/', "")
 
@@ -346,7 +371,6 @@ class EpubReaderViewModel : ViewModel() {
                     }
                 }
             } else {
-                // Fallback: find HTML files
                 fileContents.filter {
                     it.key.endsWith(".html", true) || it.key.endsWith(".xhtml", true)
                 }.toList().sortedBy { it.first }.forEachIndexed { index, (_, contentBytes) ->
@@ -398,7 +422,6 @@ class EpubReaderViewModel : ViewModel() {
 
     fun clearErrorMessage() {
         viewModelScope.launch {
-            // Clear error by sending empty string
             _errorChannel.send("")
         }
     }

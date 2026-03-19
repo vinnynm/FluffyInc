@@ -95,6 +95,7 @@ import com.enigma.fluffyinc.apps.readables.stories.Story
 import com.enigma.fluffyinc.readables.stories.StoryDao
 import com.enigma.fluffyinc.apps.readables.viewmodel.PoemViewModel
 import com.enigma.fluffyinc.apps.readables.viewmodel.StoryViewModel
+import com.enigma.fluffyinc.apps.readables.epublibrary.EpubReaderApp
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.pagerTabIndicatorOffset
@@ -148,6 +149,9 @@ fun Navigation(navController: NavHostController, poemViewModel: PoemViewModel, s
         composable(NavigationItem.Stories.route) {
             StoryListScreen(navController = navController, viewModel = storyViewModel)
         }
+        composable("addStory") {
+            AddStoryScreen(navController = navController, viewModel = storyViewModel)
+        }
         composable(
             route = "storyDetail/{storyId}",
             arguments = listOf(navArgument("storyId") { type = NavType.IntType })
@@ -156,6 +160,9 @@ fun Navigation(navController: NavHostController, poemViewModel: PoemViewModel, s
             StoryDetailScreen(viewModel = storyViewModel, storyId = storyId, navController = navController)
         }
 
+        composable(NavigationItem.Epub.route) {
+            EpubReaderApp()
+        }
     }
 }
 
@@ -164,7 +171,8 @@ fun Navigation(navController: NavHostController, poemViewModel: PoemViewModel, s
 fun BottomNavigationBar(navController: NavHostController) {
     val items = listOf(
         NavigationItem.Poems,
-        NavigationItem.Stories
+        NavigationItem.Stories,
+        NavigationItem.Epub
     )
     BottomNavigation {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -192,6 +200,7 @@ fun BottomNavigationBar(navController: NavHostController) {
 sealed class NavigationItem(var route: String, var icon: ImageVector, var title: String) {
     object Poems : NavigationItem("poems", Icons.AutoMirrored.Filled.MenuBook, "Poems")
     object Stories : NavigationItem("stories", Icons.Filled.Book, "Stories")
+    object Epub : NavigationItem("epub", Icons.AutoMirrored.Filled.MenuBook, "EPUB")
 }
 
 
@@ -201,8 +210,15 @@ sealed class NavigationItem(var route: String, var icon: ImageVector, var title:
 fun PoemListScreen(navController: NavController, viewModel: PoemViewModel) {
     val allPoems by viewModel.allPoems.collectAsState(initial = emptyList())
     var searchQuery by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
-    val categories = listOf("All", "Love", "Life", "Sad")
+    LaunchedEffect(Unit) {
+        viewModel.loadInitialPoemsIfEmpty(context)
+    }
+    val cats = allPoems.groupBy { it.category }
+    val category = cats.keys.toMutableList()
+    category.add("All")
+    category.sort()
     val pagerState = rememberPagerState()
     val scope = rememberCoroutineScope()
 
@@ -230,7 +246,7 @@ fun PoemListScreen(navController: NavController, viewModel: PoemViewModel) {
                     TabRowDefaults.Indicator(Modifier.pagerTabIndicatorOffset(pagerState, tabPositions))
                 }
             ) {
-                categories.forEachIndexed { index, title ->
+                category.forEachIndexed { index, title ->
                     Tab(
                         text = { Text(title) },
                         selected = pagerState.currentPage == index,
@@ -240,11 +256,11 @@ fun PoemListScreen(navController: NavController, viewModel: PoemViewModel) {
             }
 
             HorizontalPager(
-                count = categories.size,
+                count = category.size,
                 state = pagerState,
                 modifier = Modifier.weight(1f)
             ) { page ->
-                val currentCategory = categories[page]
+                val currentCategory = category[page]
                 val filteredPoems = allPoems.filter { poem ->
                     val matchesCategory = if (currentCategory == "All") true else poem.category.equals(currentCategory, ignoreCase = true)
                     val matchesSearch = poem.title.contains(searchQuery, ignoreCase = true)
@@ -357,6 +373,74 @@ fun AddPoemScreen(navController: NavController, viewModel: PoemViewModel) {
                 enabled = title.isNotBlank() && content.isNotBlank()
             ) {
                 Text("Save Poem")
+            }
+        }
+    }
+}
+
+@Composable
+fun AddStoryScreen(navController: NavController, viewModel: StoryViewModel) {
+    var title by remember { mutableStateOf("") }
+    var content by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("Adult") }
+    val categories = listOf("Funny", "Adult", "Long")
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Add New Story") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+        ) {
+            OutlinedTextField(
+                value = title,
+                onValueChange = { title = it },
+                label = { Text("Title") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = content,
+                onValueChange = { content = it },
+                label = { Text("Story Content") },
+                modifier = Modifier.fillMaxWidth().weight(1f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            CategorySelector(
+                categories = categories,
+                selectedCategory = category,
+                onCategorySelected = { category = it }
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = {
+                    val newStory = Story(
+                        id = System.currentTimeMillis().toInt(), // Simple unique ID
+                        title = title,
+                        content = content,
+                        category = category
+                    )
+                    viewModel.addStory(newStory)
+                    navController.navigateUp()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = title.isNotBlank() && content.isNotBlank()
+            ) {
+                Text("Save Story")
             }
         }
     }
