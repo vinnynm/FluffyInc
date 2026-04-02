@@ -1,57 +1,27 @@
 package com.enigma.fluffyinc.apps.finance.screens
 
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.enigma.fluffyinc.apps.finance.data.Expense
 import com.enigma.fluffyinc.apps.finance.ui.component.ExpensePieChart
+import com.enigma.fluffyinc.apps.finance.util.FinanceReportUtils
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +29,9 @@ fun ExpensesScreen(viewModel: FinanceViewModel, navController: NavController) {
     val expenseList by viewModel.allExpenses.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
     var showChart by remember { mutableStateOf(true) }
+    var showExportMenu by remember { mutableStateOf(false) }
+    
+    val context = LocalContext.current
 
     // Calculate date range (last 30 days)
     val endDate = System.currentTimeMillis()
@@ -79,7 +52,37 @@ fun ExpensesScreen(viewModel: FinanceViewModel, navController: NavController) {
                 },
                 actions = {
                     IconButton(onClick = { showChart = !showChart }) {
-                        Icon(if (showChart) Icons.AutoMirrored.Filled.List else Icons.Default.Star, "Toggle View")
+                        Icon(if (showChart) Icons.AutoMirrored.Filled.List else Icons.Default.PieChart, "Toggle View")
+                    }
+                    Box {
+                        IconButton(onClick = { showExportMenu = true }) {
+                            Icon(Icons.Default.Share, "Export")
+                        }
+                        DropdownMenu(
+                            expanded = showExportMenu,
+                            onDismissRequest = { showExportMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Export as CSV") },
+                                onClick = {
+                                    showExportMenu = false
+                                    FinanceReportUtils.exportExpensesToCsv(context, expenseList)?.let { uri ->
+                                        FinanceReportUtils.shareFile(context, uri, "text/csv")
+                                    }
+                                },
+                                leadingIcon = { Icon(Icons.Default.TableChart, null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Export as PDF") },
+                                onClick = {
+                                    showExportMenu = false
+                                    FinanceReportUtils.exportExpensesToPdf(context, expenseList)?.let { uri ->
+                                        FinanceReportUtils.shareFile(context, uri, "application/pdf")
+                                    }
+                                },
+                                leadingIcon = { Icon(Icons.Default.PictureAsPdf, null) }
+                            )
+                        }
                     }
                 }
             )
@@ -101,7 +104,6 @@ fun ExpensesScreen(viewModel: FinanceViewModel, navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
-                        .height(300.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("Expenses by Category (Last 30 Days)", style = MaterialTheme.typography.titleMedium)
@@ -119,16 +121,14 @@ fun ExpensesScreen(viewModel: FinanceViewModel, navController: NavController) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(expenseList) { expense ->
-                    ExpenseCard(expense, viewModel)
+                    ExpenseCard(expense, viewModel, navController)
                 }
             }
         }
 
         if (showDialog) {
             AddExpenseDialog(
-                onDismiss = {
-                    showDialog = false
-                },
+                onDismiss = { showDialog = false },
                 onConfirm = { expense ->
                     viewModel.addExpense(expense)
                     showDialog = false
@@ -182,7 +182,7 @@ fun AddExpenseDialog(onDismiss: () -> Unit, onConfirm: (Expense) -> Unit) {
                         readOnly = true,
                         label = { Text("Category") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(type = MenuAnchorType.PrimaryEditable, enabled = expanded)
+                        modifier = Modifier.fillMaxWidth().menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = expanded,
@@ -226,8 +226,16 @@ fun AddExpenseDialog(onDismiss: () -> Unit, onConfirm: (Expense) -> Unit) {
 }
 
 @Composable
-fun ExpenseCard(expense: Expense, viewModel: FinanceViewModel) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+fun ExpenseCard(expense: Expense, viewModel: FinanceViewModel, navController: NavController) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (expense.shoppingListId != null) {
+                    Modifier.clickable { navController.navigate("shopping/${expense.shoppingListId}") }
+                } else Modifier
+            )
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -236,7 +244,18 @@ fun ExpenseCard(expense: Expense, viewModel: FinanceViewModel) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(expense.description, style = MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(expense.description, style = MaterialTheme.typography.titleMedium)
+                    if (expense.shoppingListId != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            Icons.Default.ShoppingCart,
+                            contentDescription = "Linked to shopping list",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
                 Text(expense.category, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                 Text(expense.source, style = MaterialTheme.typography.bodySmall)
                 Text(SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(expense.date)),

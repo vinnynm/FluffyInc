@@ -4,16 +4,21 @@ package com.enigma.fluffyinc.apps.readables.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.enigma.fluffyinc.apps.readables.stories.Story
@@ -74,19 +79,24 @@ fun StoryListScreen(navController: NavController, viewModel: StoryViewModel) {
                 val matchesSearch = story.title.contains(searchQuery, ignoreCase = true) || story.content.contains(searchQuery, ignoreCase = true)
                 matchesCategory && matchesSearch
             }
-            StoryList(stories = filteredStories, viewModel = viewModel, navController = navController)
+            StoryGrid(stories = filteredStories, viewModel = viewModel, navController = navController)
         }
     }
 }
 
 @Composable
-fun StoryList(stories: List<Story>, viewModel: StoryViewModel, navController: NavController) {
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
+fun StoryGrid(stories: List<Story>, viewModel: StoryViewModel, navController: NavController) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(160.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         items(stories, key = { it.id }) { story ->
             StoryCard(story = story, viewModel = viewModel) {
                 navController.navigate("storyDetail/${story.id}")
             }
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
@@ -94,23 +104,52 @@ fun StoryList(stories: List<Story>, viewModel: StoryViewModel, navController: Na
 @Composable
 fun StoryCard(story: Story, viewModel: StoryViewModel, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        elevation = 4.dp
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(0.8f)
+            .clickable(onClick = onClick),
+        elevation = 4.dp,
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = story.title, style = MaterialTheme.typography.h6)
-                Text(text = story.category, style = MaterialTheme.typography.caption)
-            }
-            IconButton(onClick = {
-                val updatedStory = story.copy(isBookmarked = !story.isBookmarked)
-                viewModel.updateStory(updatedStory)
-            }) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Icon(
-                    imageVector = if (story.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                    contentDescription = "Bookmark",
-                    tint = MaterialTheme.colors.primary
+                    imageVector = Icons.Default.Book,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colors.primary.copy(alpha = 0.4f)
                 )
+            }
+            Text(
+                text = story.title,
+                style = MaterialTheme.typography.subtitle1,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = story.category,
+                    style = MaterialTheme.typography.caption,
+                    color = Color.Gray
+                )
+                IconButton(
+                    onClick = {
+                        val updatedStory = story.copy(isBookmarked = !story.isBookmarked)
+                        viewModel.updateStory(updatedStory)
+                    },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = if (story.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                        contentDescription = "Bookmark",
+                        tint = MaterialTheme.colors.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }

@@ -46,10 +46,10 @@ interface ExpenseDao {
     @Query("SELECT * FROM expense WHERE date BETWEEN :startDate AND :endDate")
     fun getExpensesByDateRange(startDate: Long, endDate: Long): Flow<List<Expense>>
 
-    @Query("SELECT * FROM expense WHERE category = 'shopping' AND date BETWEEN :startDate AND :endDate")
+    @Query("SELECT * FROM expense WHERE LOWER(category) = 'shopping' AND date BETWEEN :startDate AND :endDate")
     fun getShoppingExpensesByDateRange(startDate: Long, endDate: Long): Flow<List<Expense>>
 
-    @Query("SELECT * FROM expense WHERE category = 'food' AND date BETWEEN :startDate AND :endDate")
+    @Query("SELECT * FROM expense WHERE LOWER(category) = 'food' AND date BETWEEN :startDate AND :endDate")
     fun getFoodExpensesByDateRange(startDate: Long, endDate: Long): Flow<List<Expense>>
 
 }
@@ -60,7 +60,7 @@ interface ExpenseDao {
 @Dao
 interface ScheduledPaymentDao {
     @Insert
-    suspend fun insert(payment: ScheduledPayment)
+    suspend fun insert(payment: ScheduledPayment): Long
 
     @Update
     suspend fun update(payment: ScheduledPayment)
@@ -73,6 +73,9 @@ interface ScheduledPaymentDao {
 
     @Query("SELECT * FROM scheduled_payment WHERE isActive = 1 AND nextPaymentDate <= :currentDate")
     suspend fun getDuePayments(currentDate: Long): List<ScheduledPayment>
+
+    @Query("SELECT * FROM scheduled_payment WHERE id = :id")
+    suspend fun getPaymentById(id: Long): ScheduledPayment?
 }
 
 // ShoppingListDao.kt

@@ -3,9 +3,9 @@ package com.enigma.fluffyinc.apps.readables.epublibrary.epubviewmodel
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Log
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.core.text.HtmlCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -37,9 +37,9 @@ data class EpubReaderUiState(
     val currentEpub: EpubContent? = null,
     val currentChapterIndex: Int = 0,
     val hasDirectoryAccess: Boolean = false,
-    val fontSize: Int = 100, // percentage
+    val fontSize: Int = 100,
     val theme: ReaderTheme = ReaderTheme.LIGHT,
-    val selectedDirectoryUri: String? = null
+    val scannedFolders: Set<String> = emptySet()
 )
 
 class EpubReaderViewModel : ViewModel() {
@@ -51,25 +51,29 @@ class EpubReaderViewModel : ViewModel() {
     val errorFlow = _errorChannel.receiveAsFlow()
 
     private val PREFS_NAME = "epub_reader_prefs"
-    private val KEY_DIR_URI = "last_directory_uri"
+    private val KEY_SCANNED_FOLDERS = "scanned_folders_set"
     private val KEY_FONT_SIZE = "font_size"
     private val KEY_THEME = "reader_theme"
+    private val KEY_VIEW_MODE = "is_grid_view"
 
     fun loadSettings(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val savedUri = prefs.getString(KEY_DIR_URI, null)
+        // Important: Always copy the set from SharedPreferences
+        val savedFolders = prefs.getStringSet(KEY_SCANNED_FOLDERS, emptySet())?.toSet() ?: emptySet()
         val savedFontSize = prefs.getInt(KEY_FONT_SIZE, 100)
         val savedThemeName = prefs.getString(KEY_THEME, ReaderTheme.LIGHT.name)
         val savedTheme = try { ReaderTheme.valueOf(savedThemeName!!) } catch (e: Exception) { ReaderTheme.LIGHT }
+        val isGridView = prefs.getBoolean(KEY_VIEW_MODE, true)
 
         _uiState.update { it.copy(
-            selectedDirectoryUri = savedUri,
+            scannedFolders = savedFolders,
             fontSize = savedFontSize,
-            theme = savedTheme
+            theme = savedTheme,
+            isGridView = isGridView
         ) }
 
-        savedUri?.let {
-            scanForEpubFiles(Uri.parse(it), context)
+        if (savedFolders.isNotEmpty()) {
+            scanAllFolders(context)
         }
     }
 
@@ -80,9 +84,64 @@ class EpubReaderViewModel : ViewModel() {
                 is String -> putString(key, value)
                 is Int -> putInt(key, value)
                 is Boolean -> putBoolean(key, value)
+                is Set<*> -> putStringSet(key, value as Set<String>)
                 else -> {}
             }
             apply()
+        }
+    }
+
+    fun addFolderAndScan(uri: Uri, context: Context) {
+        val uriString = uri.toString()
+        val currentFolders = _uiState.value.scannedFolders.toMutableSet()
+        val isNew = currentFolders.add(uriString)
+        
+        if (isNew) {
+            _uiState.update { it.copy(scannedFolders = currentFolders) }
+            saveSetting(context, KEY_SCANNED_FOLDERS, currentFolders)
+        }
+        
+        // Always trigger scan when a folder is selected, even if it was already in memory
+        scanAllFolders(context)
+    }
+
+    fun removeFolder(uriString: String, context: Context) {
+        val currentFolders = _uiState.value.scannedFolders.toMutableSet()
+        if (currentFolders.remove(uriString)) {
+            _uiState.update { it.copy(scannedFolders = currentFolders) }
+            saveSetting(context, KEY_SCANNED_FOLDERS, currentFolders)
+            scanAllFolders(context)
+        }
+    }
+
+    fun scanAllFolders(context: Context) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val allEpubFiles = mutableListOf<EpubFile>()
+            val folders = _uiState.value.scannedFolders
+            
+            if (folders.isEmpty()) {
+                _uiState.update { it.copy(epubFiles = emptyList(), isLoading = false) }
+                return@launch
+            }
+
+            withContext(Dispatchers.IO) {
+                folders.forEach { uriString ->
+                    try {
+                        val uri = Uri.parse(uriString)
+                        val documentTree = DocumentFile.fromTreeUri(context, uri)
+                        if (documentTree != null && documentTree.exists()) {
+                            scanDirectoryRecursively(documentTree, allEpubFiles, context)
+                        } else {
+                            Log.e("EpubViewModel", "Folder no longer exists or access denied: $uriString")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("EpubViewModel", "Error scanning folder $uriString", e)
+                    }
+                }
+            }
+
+            _uiState.update { it.copy(epubFiles = allEpubFiles, isLoading = false) }
         }
     }
 
@@ -96,36 +155,10 @@ class EpubReaderViewModel : ViewModel() {
         saveSetting(context, KEY_THEME, theme.name)
     }
 
-    fun setDirectoryAccess(hasAccess: Boolean) {
-        _uiState.update { it.copy(hasDirectoryAccess = hasAccess) }
-    }
-
-    fun toggleViewMode() {
-        _uiState.update { it.copy(isGridView = !it.isGridView) }
-    }
-
-    fun scanForEpubFiles(directoryUri: Uri, context: Context) {
-        // Save the directory URI for persistence
-        _uiState.update { it.copy(selectedDirectoryUri = directoryUri.toString()) }
-        saveSetting(context, KEY_DIR_URI, directoryUri.toString())
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            try {
-                val documentTree = DocumentFile.fromTreeUri(context, directoryUri)
-                val epubFilesList = mutableListOf<EpubFile>()
-
-                documentTree?.let { tree ->
-                    scanDirectoryRecursively(tree, epubFilesList, context)
-                }
-
-                _uiState.update { it.copy(epubFiles = epubFilesList, isLoading = false) }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _errorChannel.send("Failed to scan directory: ${e.message}")
-                _uiState.update { it.copy(isLoading = false) }
-            }
-        }
+    fun toggleViewMode(context: Context) {
+        val newMode = !_uiState.value.isGridView
+        _uiState.update { it.copy(isGridView = newMode) }
+        saveSetting(context, KEY_VIEW_MODE, newMode)
     }
 
     private suspend fun scanDirectoryRecursively(
@@ -133,33 +166,26 @@ class EpubReaderViewModel : ViewModel() {
         epubList: MutableList<EpubFile>,
         context: Context
     ) {
-        withContext(Dispatchers.IO) {
-            try {
-                for (file in directory.listFiles()) {
-                    when {
-                        file.isFile && file.name?.endsWith(".epub", ignoreCase = true) == true -> {
-                            context.contentResolver.openInputStream(file.uri)?.use { inputStream ->
-                                val metadata = extractEpubMetadata(inputStream)
-                                val coverImage = extractCoverImageFromUri(file.uri, context)
-
-                                epubList.add(
-                                    EpubFile(
-                                        uri = file.uri,
-                                        title = metadata.first,
-                                        author = metadata.second,
-                                        coverImage = coverImage,
-                                        fileName = file.name ?: "Unknown"
-                                    )
-                                )
-                            }
-                        }
-                        file.isDirectory -> {
-                            scanDirectoryRecursively(file, epubList, context)
-                        }
+        val files = directory.listFiles()
+        for (file in files) {
+            if (file.isFile && file.name?.endsWith(".epub", ignoreCase = true) == true) {
+                try {
+                    context.contentResolver.openInputStream(file.uri)?.use { inputStream ->
+                        val metadata = extractEpubMetadata(inputStream)
+                        val coverImage = extractCoverImageFromUri(file.uri, context)
+                        epubList.add(EpubFile(
+                            uri = file.uri,
+                            title = metadata.first,
+                            author = metadata.second,
+                            coverImage = coverImage,
+                            fileName = file.name ?: "Unknown"
+                        ))
                     }
+                } catch (e: Exception) { 
+                    Log.e("EpubViewModel", "Failed to parse EPUB: ${file.name}", e)
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } else if (file.isDirectory) {
+                scanDirectoryRecursively(file, epubList, context)
             }
         }
     }
@@ -169,7 +195,7 @@ class EpubReaderViewModel : ViewModel() {
             _uiState.update { it.copy(isLoading = true) }
             try {
                 context.contentResolver.openInputStream(epubFile.uri)?.use { inputStream ->
-                    val content: EpubContent = parseEpubContent(inputStream)
+                    val content = parseEpubContent(inputStream)
                     _uiState.update { it.copy(
                         currentEpub = content,
                         currentChapterIndex = 0,
@@ -177,74 +203,57 @@ class EpubReaderViewModel : ViewModel() {
                     )}
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-                _errorChannel.send("Failed to open EPUB: ${e.message}")
+                Log.e("EpubViewModel", "Failed to open EPUB", e)
+                _errorChannel.send("Failed to open EPUB")
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
 
     fun closeEpub() {
-        _uiState.update { it.copy(currentEpub = null, currentChapterIndex = 0) }
+        _uiState.update { it.copy(currentEpub = null) }
     }
 
     fun nextChapter() {
-        _uiState.value.currentEpub?.let { epub ->
-            if (_uiState.value.currentChapterIndex < epub.chapters.size - 1) {
-                _uiState.update { it.copy(currentChapterIndex = it.currentChapterIndex + 1) }
-            }
+        _uiState.update { state ->
+            val next = state.currentChapterIndex + 1
+            if (next < (state.currentEpub?.chapters?.size ?: 0)) {
+                state.copy(currentChapterIndex = next)
+            } else state
         }
     }
 
     fun previousChapter() {
-        if (_uiState.value.currentChapterIndex > 0) {
-            _uiState.update { it.copy(currentChapterIndex = it.currentChapterIndex - 1) }
+        _uiState.update { state ->
+            val prev = state.currentChapterIndex - 1
+            if (prev >= 0) {
+                state.copy(currentChapterIndex = prev)
+            } else state
         }
     }
 
     fun goToChapter(index: Int) {
-        _uiState.value.currentEpub?.let { epub ->
-            if (index in 0 until epub.chapters.size) {
-                _uiState.update { it.copy(currentChapterIndex = index) }
-            }
-        }
+        _uiState.update { it.copy(currentChapterIndex = index) }
     }
 
     private suspend fun extractEpubMetadata(inputStream: InputStream): Pair<String, String> = withContext(Dispatchers.IO) {
         var title = "Unknown Title"
         var author = "Unknown Author"
-
         try {
             val zipData = inputStream.readBytes()
             ZipInputStream(ByteArrayInputStream(zipData)).use { zipStream ->
                 var entry = zipStream.nextEntry
                 while (entry != null) {
-                    if (entry.name.endsWith("content.opf", ignoreCase = true) ||
-                        entry.name.endsWith(".opf", ignoreCase = true)) {
-
-                        val opfContent = zipStream.readBytes()
-                        val doc = DocumentBuilderFactory.newInstance()
-                            .newDocumentBuilder()
-                            .parse(ByteArrayInputStream(opfContent))
-                        doc.documentElement.normalize()
-
-                        val titleElements = doc.getElementsByTagName("dc:title")
-                        if (titleElements.length > 0) {
-                            title = titleElements.item(0).textContent.trim()
-                        }
-
-                        val authorElements = doc.getElementsByTagName("dc:creator")
-                        if (authorElements.length > 0) {
-                            author = authorElements.item(0).textContent.trim()
-                        }
+                    if (entry.name.endsWith(".opf", ignoreCase = true)) {
+                        val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(ByteArrayInputStream(zipStream.readBytes()))
+                        title = doc.getElementsByTagName("dc:title").item(0)?.textContent?.trim() ?: title
+                        author = doc.getElementsByTagName("dc:creator").item(0)?.textContent?.trim() ?: author
                         break
                     }
                     entry = zipStream.nextEntry
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        } catch (e: Exception) {}
         Pair(title, author)
     }
 
@@ -255,174 +264,87 @@ class EpubReaderViewModel : ViewModel() {
                 var coverHref: String? = null
                 var opfPath = ""
                 val fileContents = mutableMapOf<String, ByteArray>()
-
                 ZipInputStream(ByteArrayInputStream(zipData)).use { zip ->
                     var entry = zip.nextEntry
                     while (entry != null) {
-                        if (!entry.isDirectory) {
-                            fileContents[entry.name] = zip.readBytes()
-                        }
+                        if (!entry.isDirectory) fileContents[entry.name] = zip.readBytes()
                         entry = zip.nextEntry
                     }
                 }
-
                 val opfEntry = fileContents.entries.find { it.key.endsWith(".opf", ignoreCase = true) }
                 if (opfEntry != null) {
                     opfPath = opfEntry.key.substringBeforeLast('/', "")
-                    val doc = DocumentBuilderFactory.newInstance()
-                        .newDocumentBuilder()
-                        .parse(ByteArrayInputStream(opfEntry.value))
-                    doc.documentElement.normalize()
-
-                    var coverId: String? = null
-                    val metaElements = doc.getElementsByTagName("meta")
-                    for (i in 0 until metaElements.length) {
-                        val meta = metaElements.item(i) as Element
-                        if (meta.getAttribute("name") == "cover") {
-                            coverId = meta.getAttribute("content")
-                            break
-                        }
-                    }
-
-                    val itemElements = doc.getElementsByTagName("item")
-                    for (i in 0 until itemElements.length) {
-                        val item = itemElements.item(i) as Element
-                        val id = item.getAttribute("id")
-                        val href = item.getAttribute("href")
-                        val mediaType = item.getAttribute("media-type")
-
-                        if ((coverId != null && id == coverId) ||
-                            item.getAttribute("properties") == "cover-image" ||
-                            (mediaType.startsWith("image/") && (href.contains("cover", ignoreCase = true) || id.contains("cover", ignoreCase = true)))) {
-                            coverHref = href
+                    val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(ByteArrayInputStream(opfEntry.value))
+                    val items = doc.getElementsByTagName("item")
+                    for (i in 0 until items.length) {
+                        val item = items.item(i) as Element
+                        if (item.getAttribute("properties") == "cover-image" || item.getAttribute("id").contains("cover", true)) {
+                            coverHref = item.getAttribute("href")
                             break
                         }
                     }
                 }
-
-                if (coverHref != null) {
-                    val fullPath = if (opfPath.isNotEmpty()) "$opfPath/$coverHref" else coverHref
-                    val imageBytes = fileContents[fullPath]
-                    if (imageBytes != null) {
-                        val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                        return@withContext bitmap?.asImageBitmap()
+                coverHref?.let {
+                    val fullPath = if (opfPath.isNotEmpty()) "$opfPath/$it" else it
+                    fileContents[fullPath]?.let { bytes ->
+                        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
                     }
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        null
+        } catch (e: Exception) { null }
     }
 
     private suspend fun parseEpubContent(inputStream: InputStream): EpubContent = withContext(Dispatchers.IO) {
         val chapters = mutableListOf<Chapter>()
-        var bookTitle = "Unknown Title"
-
+        var bookTitle = "Unknown Book"
         try {
             val zipData = inputStream.readBytes()
             val fileContents = mutableMapOf<String, ByteArray>()
-
-            ZipInputStream(ByteArrayInputStream(zipData)).use { zipStream ->
-                var entry = zipStream.nextEntry
+            ZipInputStream(ByteArrayInputStream(zipData)).use { zip ->
+                var entry = zip.nextEntry
                 while (entry != null) {
-                    if (!entry.isDirectory) {
-                        fileContents[entry.name] = zipStream.readBytes()
-                    }
-                    entry = zipStream.nextEntry
+                    if (!entry.isDirectory) fileContents[entry.name] = zip.readBytes()
+                    entry = zip.nextEntry
                 }
             }
-
-            val opfFileEntry = fileContents.entries.find { it.key.endsWith(".opf", ignoreCase = true) }
-            if (opfFileEntry != null) {
-                val opfDoc = DocumentBuilderFactory.newInstance()
-                    .newDocumentBuilder()
-                    .parse(ByteArrayInputStream(opfFileEntry.value))
-                opfDoc.documentElement.normalize()
-
-                val titleElements = opfDoc.getElementsByTagName("dc:title")
-                if (titleElements.length > 0) {
-                    bookTitle = titleElements.item(0).textContent.trim()
+            val opfEntry = fileContents.entries.find { it.key.endsWith(".opf", ignoreCase = true) }
+            if (opfEntry != null) {
+                val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(ByteArrayInputStream(opfEntry.value))
+                bookTitle = doc.getElementsByTagName("dc:title").item(0)?.textContent?.trim() ?: bookTitle
+                val manifest = mutableMapOf<String, String>()
+                val items = doc.getElementsByTagName("item")
+                for (i in 0 until items.length) {
+                    val item = items.item(i) as Element
+                    manifest[item.getAttribute("id")] = item.getAttribute("href")
                 }
-
-                val manifestItems = mutableMapOf<String, String>()
-                val itemElements = opfDoc.getElementsByTagName("item")
-                for (i in 0 until itemElements.length) {
-                    val item = itemElements.item(i) as Element
-                    manifestItems[item.getAttribute("id")] = item.getAttribute("href")
-                }
-
-                val spineElements = opfDoc.getElementsByTagName("itemref")
-                val opfPath = opfFileEntry.key.substringBeforeLast('/', "")
-
-                for (i in 0 until spineElements.length) {
-                    val itemRef = spineElements.item(i) as Element
-                    val idref = itemRef.getAttribute("idref")
-                    val href = manifestItems[idref]
-
-                    if (href != null) {
+                val spine = doc.getElementsByTagName("itemref")
+                val opfPath = opfEntry.key.substringBeforeLast('/', "")
+                for (i in 0 until spine.length) {
+                    val idref = (spine.item(i) as Element).getAttribute("idref")
+                    manifest[idref]?.let { href ->
                         val fullPath = if (opfPath.isNotEmpty()) "$opfPath/$href" else href
-                        val contentBytes = fileContents[fullPath]
-                        if (contentBytes != null) {
-                            val htmlContent = contentBytes.toString(Charsets.UTF_8)
-                            val chapterTitle = extractTitleFromHtml(htmlContent) ?: "Chapter ${i + 1}"
-                            chapters.add(Chapter(chapterTitle, cleanHtmlContent(htmlContent), i))
+                        fileContents[fullPath]?.let { bytes ->
+                            val html = bytes.toString(Charsets.UTF_8)
+                            chapters.add(Chapter("Chapter ${i+1}", cleanHtmlContent(html), i))
                         }
                     }
                 }
-            } else {
-                fileContents.filter {
-                    it.key.endsWith(".html", true) || it.key.endsWith(".xhtml", true)
-                }.toList().sortedBy { it.first }.forEachIndexed { index, (_, contentBytes) ->
-                    val htmlContent = contentBytes.toString(Charsets.UTF_8)
-                    val chapterTitle = extractTitleFromHtml(htmlContent) ?: "Chapter ${index + 1}"
-                    chapters.add(Chapter(chapterTitle, cleanHtmlContent(htmlContent), index))
-                }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
-        }
-
-        EpubContent(bookTitle, chapters.sortedBy { it.order })
+        } catch (e: Exception) { Log.e("EpubViewModel", "Error parsing content", e) }
+        EpubContent(bookTitle, chapters)
     }
 
-    private fun extractTitleFromHtml(html: String): String? {
-        val titleRegex = "<title[^>]*>(.*?)</title>".toRegex(RegexOption.IGNORE_CASE)
-        val h1Regex = "<h1[^>]*>(.*?)</h1>".toRegex(RegexOption.IGNORE_CASE)
-        val h2Regex = "<h2[^>]*>(.*?)</h2>".toRegex(RegexOption.IGNORE_CASE)
-
-        titleRegex.find(html)?.groupValues?.get(1)?.let { title ->
-            if (title.isNotBlank()) {
-                return HtmlCompat.fromHtml(title, HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
-            }
-        }
-
-        h1Regex.find(html)?.groupValues?.get(1)?.let { h1 ->
-            if (h1.isNotBlank()) {
-                return HtmlCompat.fromHtml(h1, HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
-            }
-        }
-
-        h2Regex.find(html)?.groupValues?.get(1)?.let { h2 ->
-            if (h2.isNotBlank()) {
-                return HtmlCompat.fromHtml(h2, HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
-            }
-        }
-
-        return null
+    private fun cleanHtmlContent(html: String): String = html.replace("<?xml[^>]*?>".toRegex(), "").replace("<!DOCTYPE[^>]*>".toRegex(), "").trim()
+    
+    fun setDirectoryAccess(bool: Boolean) {
+        _uiState.update { it.copy(hasDirectoryAccess = bool) }
     }
 
-    private fun cleanHtmlContent(html: String): String {
-        return html
-            .replace("<?xml[^>]*?>".toRegex(), "")
-            .replace("<!DOCTYPE[^>]*>".toRegex(), "")
-            .trim()
+    fun scanForEpubFiles(uri: Uri, context: Context) {
+        addFolderAndScan(uri, context)
     }
-
-    fun clearErrorMessage() {
-        viewModelScope.launch {
-            _errorChannel.send("")
-        }
+    
+    fun refreshLibrary(context: Context) {
+        scanAllFolders(context)
     }
 }

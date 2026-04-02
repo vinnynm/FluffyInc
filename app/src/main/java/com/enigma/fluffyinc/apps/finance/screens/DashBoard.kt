@@ -1,241 +1,331 @@
 package com.enigma.fluffyinc.apps.finance.screens
 
 
-import android.provider.Settings
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.enigma.fluffyinc.ui.theme.FluffyIncTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import java.text.NumberFormat
-
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(viewModel: FinanceViewModel, navController: NavController) {
     val income by viewModel.allIncome.collectAsState()
     val expenses by viewModel.allExpenses.collectAsState()
+    val scheduledPayments by viewModel.activePayments.collectAsState()
+    val loans by viewModel.activeLoans.collectAsState()
 
     val totalIncome = income.sumOf { it.amount }
     val totalExpenses = expenses.sumOf { it.amount }
     val balance = totalIncome - totalExpenses
 
+    var quote by remember { mutableStateOf("Loading inspiration...") }
+    var author by remember { mutableStateOf("") }
+
+    // Fetch quote from API
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            try {
+                val url = URL("https://api.quotable.io/random")
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "GET"
+                val response = connection.inputStream.bufferedReader().readText()
+                val json = JSONObject(response)
+                quote = json.getString("content")
+                author = json.getString("author")
+            } catch (e: Exception) {
+                quote = "The best way to predict the future is to create it."
+                author = "Peter Drucker"
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Finance Manager") },
+                title = { Text("Finance Dashboard") },
                 colors = TopAppBarDefaults.topAppBarColors()
             )
         }
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Balance Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (balance >= 0)  MaterialTheme.colorScheme.primaryContainer
-                    else MaterialTheme.colorScheme.errorContainer
-                )
-            ) {
-                Column(
+            // Inspirational Quote Section
+            item {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                    )
                 ) {
-                    Text(
-                        "Current Balance",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (balance >= 0) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        NumberFormat.getCurrencyInstance().format(balance),
-                        style = MaterialTheme.typography.displayMedium,
-                        color = if (balance >= 0) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.FormatQuote,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Text(
+                            text = quote,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontStyle = FontStyle.Italic,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        if (author.isNotEmpty()) {
                             Text(
-                                "Income",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (balance >= 0) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Text(
-                                NumberFormat.getCurrencyInstance().format(totalIncome),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color(0xFF4CAF50)
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                "Expenses",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (balance >= 0) MaterialTheme.colorScheme.onPrimaryContainer
-                                else MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Text(
-                                NumberFormat.getCurrencyInstance().format(totalExpenses),
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color(0xFFF44336)
+                                text = "- $author",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.End
                             )
                         }
                     }
                 }
             }
 
-            // Navigation Grid
-            Text(
-                "Quick Access",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp)
-            )
+            // Financial Outlook Section
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (balance >= 0) MaterialTheme.colorScheme.surfaceVariant
+                        else MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "Net Worth / Outlook",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            NumberFormat.getCurrencyInstance().format(balance),
+                            style = MaterialTheme.typography.displayMedium,
+                            color = if (balance >= 0) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.error
+                        )
+                        
+                        LinearProgressIndicator(
+                            progress = { if (totalIncome > 0) (totalExpenses / totalIncome).toFloat().coerceIn(0f, 1f) else 1f },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp)
+                                .height(8.dp),
+                            color = if (totalExpenses > totalIncome) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surface
+                        )
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("Monthly Income", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    NumberFormat.getCurrencyInstance().format(totalIncome),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Color(0xFF4CAF50)
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Monthly Expenses", style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    NumberFormat.getCurrencyInstance().format(totalExpenses),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Color(0xFFF44336)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item {
-                    DashboardCard(
-                        title = "Income",
-                        icon = Icons.AutoMirrored.Filled.TrendingUp,
-                        color = Color(0xFF4CAF50),
+            // Quick Actions Section
+            item {
+                Text(
+                    "Quick Navigation",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CompactActionCard(
+                        "Income",
+                        Icons.AutoMirrored.Filled.TrendingUp,
+                        Color(0xFF4CAF50),
+                        Modifier.weight(1f),
                         onClick = { navController.navigate("income") }
                     )
-                }
-                item {
-                    DashboardCard(
-                        title = "Expenses",
-                        icon = Icons.AutoMirrored.Filled.TrendingDown,
-                        color = Color(0xFFF44336),
+                    CompactActionCard(
+                        "Expenses",
+                        Icons.AutoMirrored.Filled.TrendingDown,
+                        Color(0xFFF44336),
+                        Modifier.weight(1f),
                         onClick = { navController.navigate("expenses") }
                     )
                 }
-                item {
-                    DashboardCard(
-                        title = "Scheduled Payments",
-                        icon = Icons.Default.DateRange,
-                        color = Color(0xFFFF9800),
-                        onClick = { navController.navigate("scheduled") }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CompactActionCard(
+                        "Loans",
+                        Icons.Default.AccountBalance,
+                        Color(0xFFE91E63),
+                        Modifier.weight(1f),
+                        onClick = { navController.navigate("loans") }
                     )
-                }
-                item {
-                    DashboardCard(
-                        title = "Shopping Lists",
-                        icon = Icons.Default.ShoppingCart,
-                        color = Color(0xFF2196F3),
+                    CompactActionCard(
+                        "Shopping",
+                        Icons.Default.ShoppingCart,
+                        Color(0xFF2196F3),
+                        Modifier.weight(1f),
                         onClick = { navController.navigate("shopping") }
                     )
                 }
+            }
+
+            // Upcoming Payments Section
+            item {
+                Text(
+                    "Upcoming Payments",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+
+            val upcomingItems = (scheduledPayments.map { it.description to it.nextPaymentDate } + 
+                               loans.map { it.loanName to it.nextPaymentDate })
+                               .sortedBy { it.second }
+                               .take(5)
+
+            if (upcomingItems.isEmpty()) {
                 item {
-                    DashboardCard(
-                        title = "All Transactions",
-                        icon = Icons.Default.Receipt,
-                        color = Color(0xFF9C27B0),
-                        onClick = { navController.navigate("transactions") }
+                    Text(
+                        "No upcoming payments scheduled.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.secondary
                     )
                 }
-                item {
-                    DashboardCard(
-                        title = "Loans",
-                        icon = Icons.Default.AccountBalance,
-                        color = Color(0xFFE91E63),
-                        onClick = { navController.navigate("loans") }
-                    )
+            } else {
+                items(upcomingItems) { (name, date) ->
+                    val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+                    val isSoon = date - System.currentTimeMillis() < 2 * 24 * 60 * 60 * 1000 // 2 days
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSoon) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f)
+                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    if (isSoon) Icons.Default.Warning else Icons.Default.Event,
+                                    contentDescription = null,
+                                    tint = if (isSoon) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(name, style = MaterialTheme.typography.bodyLarge)
+                            }
+                            Text(
+                                sdf.format(Date(date)),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isSoon) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                    }
                 }
             }
+            
+            item { Spacer(modifier = Modifier.height(32.dp)) }
         }
     }
 }
 
 @Composable
-fun DashboardCard(
+fun CompactActionCard(
     title: String,
     icon: ImageVector,
     color: Color,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
+        modifier = modifier
+            .height(80.dp)
             .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.1f)
-        )
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                icon,
-                contentDescription = title,
-                modifier = Modifier.size(48.dp),
-                tint = color
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                color = color
-            )
+            Icon(icon, contentDescription = title, tint = color)
+            Text(title, style = MaterialTheme.typography.labelLarge, color = color)
         }
     }
 }

@@ -165,14 +165,22 @@ class JournalViewModel(
     private var _cachedJournal: JournalEntry? = null
 
     fun upsertJournalEntry(
-        id: String, title: String, content: String, emotion: Emotion, biometricLock: Boolean = false
+        id: String,
+        title: String,
+        content: String,
+        emotion: Emotion,
+        biometricLock: Boolean = false,
+        entryDate: Long? = null,
+        createdAt: Long? = null
     ) = viewModelScope.launch {
+        val existing = repo.getJournalEntryById(id)
         val entry = JournalEntry(
             id = id,
             title = title,
             content = content,
             emotion = emotion,
-            entryDate = System.currentTimeMillis(),
+            entryDate = entryDate ?: existing?.entryDate ?: System.currentTimeMillis(),
+            createdAt = createdAt ?: existing?.createdAt ?: System.currentTimeMillis(),
             biometricLock = biometricLock
         )
         _cachedJournal = entry

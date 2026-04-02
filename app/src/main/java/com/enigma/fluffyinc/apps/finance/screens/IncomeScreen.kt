@@ -145,7 +145,7 @@ fun AddIncomeDialog(onDismiss: () -> Unit, onConfirm: (Income) -> Unit) {
                         readOnly = true,
                         label = { Text("Category") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(type= MenuAnchorType.PrimaryEditable, enabled= expanded)
+                        modifier = Modifier.fillMaxWidth().menuAnchor(type= MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = expanded,

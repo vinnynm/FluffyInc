@@ -144,7 +144,7 @@ fun AddScheduledPaymentDialog(onDismiss: () -> Unit, onConfirm: (ScheduledPaymen
                         readOnly = true,
                         label = { Text("Frequency") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedFreq) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(type= MenuAnchorType.PrimaryEditable, enabled = expandedFreq)
+                        modifier = Modifier.fillMaxWidth().menuAnchor(type= MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = expandedFreq,

@@ -1,10 +1,10 @@
 package com.enigma.fluffyinc.navigation
 
 sealed class Screens(val route: String) {
-    data object Home: Screens(route= "Home")
-    data object Finance: Screens(route= "Finance")
-    data object Readables: Screens(route= "Readables")
-    data object Settings: Screens(route= "Settings")
-    data object Games: Screens(route= "Games")
-    data object Lists: Screens(route = "lists_main")
+    data object Home : Screens("home")
+    data object Finance : Screens("finance")
+    data object Readables : Screens("readables")
+    data object Games : Screens("games")
+    data object Settings : Screens("settings")
+    data object Lists : Screens("lists_main")
 }

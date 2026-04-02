@@ -33,6 +33,9 @@ fun ShoppingListsScreen(viewModel: FinanceViewModel, navController: NavControlle
             TopAppBar(
                 title = { Text(if (showCompleted) "Completed Lists" else "Shopping Lists") },
                 actions = {
+                    IconButton(onClick = { navController.navigate("shopping_stats") }) {
+                        Icon(Icons.Default.BarChart, "Analytics")
+                    }
                     IconButton(onClick = { showCompleted = !showCompleted }) {
                         Icon(if (showCompleted) Icons.AutoMirrored.Filled.List else Icons.Default.Check, "Toggle")
                     }

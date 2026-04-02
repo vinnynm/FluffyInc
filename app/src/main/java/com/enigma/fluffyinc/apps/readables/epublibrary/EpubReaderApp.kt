@@ -35,7 +35,7 @@ fun EpubReaderApp(viewModel: EpubReaderViewModel = viewModel()) {
         }
     }
 
-    // Load saved settings and last directory
+    // Load saved settings and start initial scan
     LaunchedEffect(Unit) {
         viewModel.loadSettings(context)
         viewModel.setDirectoryAccess(true)
@@ -65,8 +65,10 @@ fun EpubReaderApp(viewModel: EpubReaderViewModel = viewModel()) {
                     paddingValues = paddingValues,
                     uiState = uiState,
                     onOpenEpub = { epubFile -> viewModel.openEpub(epubFile, context) },
-                    onToggleView = { viewModel.toggleViewMode() },
-                    onScanDirectory = { uri -> viewModel.scanForEpubFiles(uri, context) }
+                    onToggleView = { viewModel.toggleViewMode(context) },
+                    onScanDirectory = { uri -> viewModel.scanForEpubFiles(uri, context) },
+                    onRemoveFolder = { uriString -> viewModel.removeFolder(uriString, context) },
+                    onRefresh = { viewModel.refreshLibrary(context) }
                 )
             }
         }

@@ -12,6 +12,8 @@ import com.enigma.fluffyinc.apps.finance.data.LoanPayment
 import com.enigma.fluffyinc.apps.finance.data.ScheduledPayment
 import com.enigma.fluffyinc.apps.finance.data.ShoppingItem
 import com.enigma.fluffyinc.apps.finance.data.ShoppingList
+import com.enigma.fluffyinc.apps.finance.workers.cancelFinanceReminder
+import com.enigma.fluffyinc.apps.finance.workers.scheduleFinanceReminder
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -41,6 +43,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
     init {
         viewModelScope.launch {
             processScheduledPayments()
+            processLoanPayments()
         }
     }
 
@@ -64,15 +67,34 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
 
     // Scheduled payment operations
     fun addScheduledPayment(payment: ScheduledPayment) = viewModelScope.launch {
-        scheduledPaymentDao.insert(payment)
+        val id = scheduledPaymentDao.insert(payment)
+        
+        // Schedule initial reminder
+        scheduleFinanceReminder(
+            getApplication(),
+            id,
+            payment.description,
+            "Scheduled Payment: ${payment.description}",
+            payment.nextPaymentDate,
+            "scheduled_payment"
+        )
     }
 
     fun updateScheduledPayment(payment: ScheduledPayment) = viewModelScope.launch {
         scheduledPaymentDao.update(payment)
+        scheduleFinanceReminder(
+            getApplication(),
+            payment.id,
+            payment.description,
+            "Scheduled Payment: ${payment.description}",
+            payment.nextPaymentDate,
+            "scheduled_payment"
+        )
     }
 
     fun cancelScheduledPayment(payment: ScheduledPayment) = viewModelScope.launch {
         scheduledPaymentDao.update(payment.copy(isActive = false))
+        cancelFinanceReminder(getApplication(), payment.id, "scheduled_payment")
     }
 
     private suspend fun processScheduledPayments() {
@@ -98,12 +120,24 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
                     paymentsMade = newPaymentsMade,
                     isActive = false
                 ))
+                cancelFinanceReminder(getApplication(), payment.id, "scheduled_payment")
             } else {
                 val nextDate = calculateNextPaymentDate(payment.nextPaymentDate, payment.frequency)
-                scheduledPaymentDao.update(payment.copy(
+                val updatedPayment = payment.copy(
                     paymentsMade = newPaymentsMade,
                     nextPaymentDate = nextDate
-                ))
+                )
+                scheduledPaymentDao.update(updatedPayment)
+                
+                // Reschedule reminder for next date
+                scheduleFinanceReminder(
+                    getApplication(),
+                    updatedPayment.id,
+                    updatedPayment.description,
+                    "Scheduled Payment: ${updatedPayment.description}",
+                    updatedPayment.nextPaymentDate,
+                    "scheduled_payment"
+                )
             }
         }
     }
@@ -162,7 +196,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
             amount = total,
             description = "Shopping: ${shoppingList.name}",
             source = shoppingList.name,
-            category = "shopping",
+            category = "Shopping",
             date = System.currentTimeMillis(),
             shoppingListId = listId
         ))
@@ -206,6 +240,38 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
 
             emit(typeMap)
         }
+    }
+
+    fun getDailyShoppingSpending(startDate: Long, endDate: Long): Flow<Map<Long, Double>> {
+        return flow {
+            val expenses = expenseDao.getShoppingExpensesByDateRange(startDate, endDate).first()
+            val dailyMap = mutableMapOf<Long, Double>()
+            
+            // Initialize map with 0 for all days in range to avoid gaps
+            val cal = Calendar.getInstance()
+            cal.timeInMillis = startDate
+            while (cal.timeInMillis <= endDate) {
+                val dayStart = getStartOfDay(cal.timeInMillis)
+                dailyMap[dayStart] = 0.0
+                cal.add(Calendar.DAY_OF_YEAR, 1)
+            }
+
+            expenses.forEach { expense ->
+                val dayStart = getStartOfDay(expense.date)
+                dailyMap[dayStart] = dailyMap.getOrDefault(dayStart, 0.0) + expense.amount
+            }
+            emit(dailyMap.toSortedMap())
+        }
+    }
+
+    private fun getStartOfDay(time: Long): Long {
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = time
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
     }
 
 
@@ -269,7 +335,17 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
             loanType = loanType
         )
 
-        loanDao.insert(loan)
+        val id = loanDao.insert(loan)
+        
+        // Schedule reminder for the loan
+        scheduleFinanceReminder(
+            getApplication(),
+            id,
+            loan.loanName,
+            "Loan Payment: ${loan.loanName}",
+            loan.nextPaymentDate,
+            "loan"
+        )
 
         // Add loan amount to income
         addIncome(Income(
@@ -318,6 +394,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
                 numberOfPaymentsMade = paymentNumber,
                 isActive = false
             ))
+            cancelFinanceReminder(getApplication(), loan.id, "loan")
         } else {
             val calendar = Calendar.getInstance()
             calendar.timeInMillis = loan.nextPaymentDate
@@ -327,11 +404,22 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
                 "annually" -> calendar.add(Calendar.YEAR, 1)
             }
 
-            loanDao.update(loan.copy(
+            val updatedLoan = loan.copy(
                 amountPaid = newAmountPaid,
                 numberOfPaymentsMade = paymentNumber,
                 nextPaymentDate = calendar.timeInMillis
-            ))
+            )
+            loanDao.update(updatedLoan)
+            
+            // Reschedule reminder for next date
+            scheduleFinanceReminder(
+                getApplication(),
+                updatedLoan.id,
+                updatedLoan.loanName,
+                "Loan Payment: ${updatedLoan.loanName}",
+                updatedLoan.nextPaymentDate,
+                "loan"
+            )
         }
 
         // Add to expenses
@@ -365,6 +453,8 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
                 numberOfPaymentsMade = loan.numberOfPaymentsMade + 1,
                 isActive = false
             ))
+            
+            cancelFinanceReminder(getApplication(), loan.id, "loan")
 
             // Add to expenses
             addExpense(Expense(
@@ -378,6 +468,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
 
     fun deleteLoan(loan: Loan) = viewModelScope.launch {
         loanDao.delete(loan)
+        cancelFinanceReminder(getApplication(), loan.id, "loan")
     }
 
     fun getLoanPayments(loanId: Long) = loanPaymentDao.getPaymentsByLoanId(loanId)

@@ -5,58 +5,21 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.BitmapDrawable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.BottomNavigation
-import androidx.compose.material.BottomNavigationItem
-import androidx.compose.material.Button
-import androidx.compose.material.Card
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Divider
-import androidx.compose.material.DropdownMenuItem
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.ExposedDropdownMenuBox
-import androidx.compose.material.ExposedDropdownMenuDefaults
-import androidx.compose.material.FloatingActionButton
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.OutlinedTextField
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Tab
-import androidx.compose.material.TabRow
-import androidx.compose.material.TabRowDefaults
-import androidx.compose.material.Text
-import androidx.compose.material.TextField
-import androidx.compose.material.TopAppBar
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -66,16 +29,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.ColorUtils
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import androidx.palette.graphics.Palette
 import androidx.room.Database
@@ -96,10 +57,7 @@ import com.enigma.fluffyinc.readables.stories.StoryDao
 import com.enigma.fluffyinc.apps.readables.viewmodel.PoemViewModel
 import com.enigma.fluffyinc.apps.readables.viewmodel.StoryViewModel
 import com.enigma.fluffyinc.apps.readables.epublibrary.EpubReaderApp
-import com.google.accompanist.pager.ExperimentalPagerApi
-import com.google.accompanist.pager.HorizontalPager
-import com.google.accompanist.pager.pagerTabIndicatorOffset
-import com.google.accompanist.pager.rememberPagerState
+import com.google.accompanist.pager.*
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -131,7 +89,10 @@ fun ReadingMainScreen() {
 // Navigation.kt
 @Composable
 fun Navigation(navController: NavHostController, poemViewModel: PoemViewModel, storyViewModel: StoryViewModel) {
-    NavHost(navController, startDestination = NavigationItem.Poems.route) {
+    NavHost(navController, startDestination = NavigationItem.Home.route) {
+        composable(NavigationItem.Home.route) {
+            ReadablesHomeScreen(navController)
+        }
         composable(NavigationItem.Poems.route) {
             PoemListScreen(navController = navController, viewModel = poemViewModel)
         }
@@ -166,10 +127,70 @@ fun Navigation(navController: NavHostController, poemViewModel: PoemViewModel, s
     }
 }
 
+@Composable
+fun ReadablesHomeScreen(navController: NavController) {
+    val items = listOf(
+        NavigationItem.Poems,
+        NavigationItem.Stories,
+        NavigationItem.Epub
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colors.background)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Readables Library",
+            style = MaterialTheme.typography.h4,
+            modifier = Modifier.padding(bottom = 24.dp, top = 8.dp)
+        )
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(items) { item ->
+                Card(
+                    modifier = Modifier
+                        .aspectRatio(1f)
+                        .clickable { navController.navigate(item.route) },
+                    elevation = 4.dp,
+                    shape = RoundedCornerShape(16.dp),
+                    backgroundColor = MaterialTheme.colors.surface
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = item.title,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colors.primary
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.h6,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 // BottomNavigationBar.kt
 @Composable
 fun BottomNavigationBar(navController: NavHostController) {
     val items = listOf(
+        NavigationItem.Home,
         NavigationItem.Poems,
         NavigationItem.Stories,
         NavigationItem.Epub
@@ -198,6 +219,7 @@ fun BottomNavigationBar(navController: NavHostController) {
 
 // NavigationItem.kt
 sealed class NavigationItem(var route: String, var icon: ImageVector, var title: String) {
+    object Home : NavigationItem("home", Icons.Default.GridView, "Home")
     object Poems : NavigationItem("poems", Icons.AutoMirrored.Filled.MenuBook, "Poems")
     object Stories : NavigationItem("stories", Icons.Filled.Book, "Stories")
     object Epub : NavigationItem("epub", Icons.AutoMirrored.Filled.MenuBook, "EPUB")
@@ -274,12 +296,17 @@ fun PoemListScreen(navController: NavController, viewModel: PoemViewModel) {
 
 @Composable
 fun PoemList(poems: List<Poem>, viewModel: PoemViewModel, navController: NavController) {
-    LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(160.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         items(poems, key = { it.id }) { poem ->
             PoemCard(poem = poem, viewModel = viewModel) {
                 navController.navigate("poemDetail/${poem.id}")
             }
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
@@ -287,23 +314,52 @@ fun PoemList(poems: List<Poem>, viewModel: PoemViewModel, navController: NavCont
 @Composable
 fun PoemCard(poem: Poem, viewModel: PoemViewModel, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        elevation = 4.dp
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(0.8f)
+            .clickable(onClick = onClick),
+        elevation = 4.dp,
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = poem.title, style = MaterialTheme.typography.h6)
-                Text(text = poem.category, style = MaterialTheme.typography.caption)
-            }
-            IconButton(onClick = {
-                val updatedPoem = poem.copy(isBookmarked = !poem.isBookmarked)
-                viewModel.updatePoem(updatedPoem)
-            }) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Icon(
-                    imageVector = if (poem.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                    contentDescription = "Bookmark",
-                    tint = MaterialTheme.colors.primary
+                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colors.primary.copy(alpha = 0.4f)
                 )
+            }
+            Text(
+                text = poem.title,
+                style = MaterialTheme.typography.subtitle1,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = poem.category,
+                    style = MaterialTheme.typography.caption,
+                    color = Color.Gray
+                )
+                IconButton(
+                    onClick = {
+                        val updatedPoem = poem.copy(isBookmarked = !poem.isBookmarked)
+                        viewModel.updatePoem(updatedPoem)
+                    },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = if (poem.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                        contentDescription = "Bookmark",
+                        tint = MaterialTheme.colors.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }

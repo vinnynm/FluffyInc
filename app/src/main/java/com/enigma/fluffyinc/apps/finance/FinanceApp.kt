@@ -15,7 +15,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,6 +30,7 @@ import com.enigma.fluffyinc.apps.finance.screens.ScheduledPaymentsScreen
 import com.enigma.fluffyinc.apps.finance.screens.ShoppingListDetailScreen
 import com.enigma.fluffyinc.apps.finance.screens.ShoppingListsScreen
 import com.enigma.fluffyinc.apps.finance.screens.TransactionsScreen
+import com.enigma.fluffyinc.apps.finance.screens.ShoppingStatsScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +52,7 @@ fun FinanceApp(viewModel: FinanceViewModel = viewModel()) {
                 ShoppingListDetailScreen(viewModel, listId, navController)
             }
         }
+        composable("shopping_stats") { ShoppingStatsScreen(viewModel, navController) }
         composable("transactions") { TransactionsScreen(viewModel, navController) }
         composable("loans") { LoansScreen(viewModel, navController) }
         composable("loan/{loanId}") { backStackEntry ->

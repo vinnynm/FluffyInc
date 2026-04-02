@@ -205,7 +205,7 @@ fun TransactionsScreen(viewModel: FinanceViewModel, navController: NavController
                         OutlinedButton(
                             onClick = { expanded = true },
                             modifier = Modifier.menuAnchor(
-                                type= MenuAnchorType.PrimaryEditable, expanded)
+                                type= MenuAnchorType.PrimaryNotEditable, enabled = true)
                         ) {
                             Text("Last $selectedDays days")
                             Icon(Icons.Default.ArrowDropDown, "Select")

@@ -304,7 +304,7 @@ fun AddLoanDialog(
                         readOnly = true,
                         label = { Text("Payment Frequency") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedFreq) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(type= MenuAnchorType.PrimaryEditable, enabled= expandedFreq)
+                        modifier = Modifier.fillMaxWidth().menuAnchor(type= MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = expandedFreq,
@@ -332,7 +332,7 @@ fun AddLoanDialog(
                         readOnly = true,
                         label = { Text("Loan Type") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedType) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(type= MenuAnchorType.PrimaryEditable, enabled = expandedType)
+                        modifier = Modifier.fillMaxWidth().menuAnchor(type= MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = expandedType,
