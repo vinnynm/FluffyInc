@@ -15,7 +15,7 @@ object AppModule {
                 AppDatabase::class.java,
                 "notesapp.db"
             )
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
             database = instance
             instance

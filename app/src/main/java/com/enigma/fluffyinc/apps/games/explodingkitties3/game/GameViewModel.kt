@@ -1,6 +1,5 @@
 package com.enigma.fluffyinc.apps.games.explodingkitties3.game
 
-
 import android.app.Application
 import android.content.Context
 import android.os.Build
@@ -29,488 +28,6 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-/**
-class GameViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val _uiState = MutableStateFlow(GameUiState())
-    val uiState = _uiState.asStateFlow()
-
-    private var deck = mutableListOf<Card>()
-    private var discardPile = mutableListOf<Card>()
-
-
-    private var aiPlayer: AIPlayer? = null
-
-
-    private val networkManager = NetworkManager(viewModelScope)
-    private var isHost: Boolean = false
-    private var myPlayerId: Int = UUID.randomUUID().variant()
-
-    var playerId: Int = Random.nextInt(1, 1000)
-
-    init {
-        // Observe our own state to trigger AI moves
-        // Setup network callbacks
-        networkManager.onStateReceived = { stateUpdate -> onStateUpdateReceived(stateUpdate) }
-        networkManager.onActionReceived = { gameAction -> onActionReceivedFromClient(gameAction) }
-
-        // Observe UI state to trigger AI moves
-        viewModelScope.launch {
-            _uiState.onEach { state ->
-                // --- FIX: Add guards to ensure we only run AI logic in the correct mode and state ---
-                if (state.gameState == GameState.PLAYING &&
-                    state.gameMode == GameMode.SINGLE_PLAYER &&
-                    state.players.isNotEmpty() &&
-                    state.currentPlayerIndex < state.players.size) {
-
-                    val currentPlayer = state.players[state.currentPlayerIndex]
-                    // Ensure the AI object exists and it's an AI's turn
-                    if (currentPlayer.type == PlayerType.AI && currentPlayer.isAlive && aiPlayer != null) {
-                        delay(1500) // AI "thinking" time
-                        val move = aiPlayer!!.makeMove(currentPlayer, state.deckSize, state.players)
-                        if (move.action == "PLAY" && move.card != null) {
-                            onPlayCard(move.card)
-                        } else {
-                            onEndTurnAndDraw()
-                        }
-                    }
-                }
-            }
-        // This is necessary for the onEach to execute
-        }
-    }
-
-
-
-    // --- Event Handlers ---
-
-    fun onGameModeSelected(mode: GameMode) {
-        aiPlayer = null
-        isHost = (mode == GameMode.NETWORK_HOST)
-        myPlayerId = if (isHost) 1 else 2
-
-        _uiState.update { it.copy(
-            gameMode = mode,
-            gameState = if (mode == GameMode.NETWORK_HOST || mode == GameMode.NETWORK_JOIN) GameState.LOBBY else GameState.SETUP,
-            localIP = if (mode == GameMode.NETWORK_HOST) networkManager.getLocalIPAddress(getApplication()) else ""
-        )}
-    }
-
-    fun onShowTutorial() {
-        _uiState.update { it.copy(gameState = GameState.TUTORIAL) }
-    }
-
-    fun onPlayerCountChange(newCount: Int) {
-        if (newCount in 2..6) { _uiState.update { it.copy(playerCount = newCount) } }
-    }
-
-    fun onAIDifficultyChange(difficulty: AIDifficulty) {
-        _uiState.update { it.copy(aiDifficulty = difficulty) }
-    }
-
-    fun onBackToMenu() = resetGame()
-
-    fun onStartHost() {
-        isHost = true
-        myPlayerId = 1
-        networkManager.startHost()
-        _uiState.update { it.copy(connectionStatus = "Hosting on ${_uiState.value.localIP}...") }
-    }
-
-
-    fun onJoinHost(ip: String) {
-        isHost = false
-        // In a real app, player ID would be assigned by the host
-        myPlayerId = 2
-        networkManager.connectToHost(ip)
-        _uiState.update { it.copy(connectionStatus = "Connecting to $ip...") }
-    }
-
-    fun onStartGame() {
-        // This setup logic is now only ever run by the host or for local games.
-        // Clients will receive the starting state from the host.
-        if (!isHost && _uiState.value.gameMode == GameMode.NETWORK_JOIN) return
-
-        // --- FIX: Initialize aiPlayer only for Single Player mode ---
-        if (_uiState.value.gameMode == GameMode.SINGLE_PLAYER) {
-            aiPlayer = AIPlayer(_uiState.value.aiDifficulty)
-        } else {
-            aiPlayer = null
-        }
-        deck = createOfficialDeck(_uiState.value.playerCount)
-        val players = mutableListOf<Player>()
-        val playerCount = _uiState.value.playerCount
-
-        for (id in 1..playerCount) {
-            val hand = mutableListOf(createCard(CardType.DEFUSE))
-            repeat(7) { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                hand.add(deck.removeFirst())
-            }else{
-                hand.add(deck.removeAt(0))
-            }
-            }
-
-            val player = when (_uiState.value.gameMode) {
-                GameMode.SINGLE_PLAYER -> Player(id = id, name = if (id == 1) "You" else "AI $id", hand = hand, type = if (id == 1) PlayerType.HUMAN else PlayerType.AI)
-                else -> Player(id = id, name = "Player $id", hand = hand)
-            }
-            players.add(player)
-        }
-
-        repeat(playerCount - 1) { deck.add(createCard(CardType.EXPLODING_KITTEN)) }
-        deck.shuffle()
-
-        discardPile.clear()
-
-        _uiState.update { it.copy(
-            gameState = GameState.PLAYING,
-            players = players,
-            currentPlayerIndex = 0,
-            deckSize = deck.size,
-            discardPile = emptyList(),
-            gameMessage = "The game has begun! ${players[0].name}'s turn."
-        )}
-
-        if (isHost) broadcastState()
-    }
-
-
-    /**
-
-    // Add this new function to your GameViewModel
-    fun onHandoffConfirmed() {
-        val nextPlayerName = _uiState.value.players[_uiState.value.currentPlayerIndex].name
-        _uiState.update { it.copy(
-            gameState = GameState.PLAYING,
-            gameMessage = "It's your turn, $nextPlayerName!"
-        )}
-    }
-    */
-fun onEndTurnAndDraw() {
-    if (isHost || _uiState.value.gameMode != GameMode.NETWORK_JOIN) {
-        executeEndTurnAndDraw()
-        if (isHost) broadcastState()
-    } else {
-        networkManager.sendActionToHost(GameAction("END_TURN", playerId = myPlayerId))
-    }
-}
-
-    private fun executeEndTurnAndDraw() = viewModelScope.launch {
-        val currentPlayer = _uiState.value.players[_uiState.value.currentPlayerIndex]
-        if (deck.isEmpty()) {
-            _uiState.update { it.copy(gameMessage = "Deck is empty! Game over!") }
-            return@launch
-        }
-
-        val drawnCard = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-            deck.removeFirst()
-        } else {
-            deck.removeAt(0)
-        }
-
-        if (drawnCard.type == CardType.EXPLODING_KITTEN) {
-            handleExplodingKittenDraw(currentPlayer, drawnCard)
-        } else {
-            val newHand = currentPlayer.hand.toMutableList().apply { add(drawnCard) }
-            val newPlayers = _uiState.value.players.toMutableList().apply { this[_uiState.value.currentPlayerIndex] = currentPlayer.copy(hand = newHand) }
-            _uiState.update { it.copy(players = newPlayers, gameMessage = "${currentPlayer.name} drew a card.") }
-            endTurn(skipped=false)
-        }
-    }
-
-
-    /**
-    fun onPlayCard(card: Card) {
-        val currentPlayerIndex = _uiState.value.currentPlayerIndex
-
-        if (isHost || _uiState.value.gameMode == GameMode.PASS_AND_PLAY || _uiState.value.gameMode == GameMode.SINGLE_PLAYER) {
-            // Host or local game: Execute logic directly
-            var players = _uiState.value.players.toMutableList()
-            val currentPlayer = players[currentPlayerIndex]
-
-            val newHand = currentPlayer.hand.toMutableList().apply { remove(card) }
-            players[currentPlayerIndex] = currentPlayer.copy(hand = newHand)
-            discardPile.add(card)
-            _uiState.update { it.copy(players = players, discardPile = discardPile.toList()) }
-
-            when (card.type) {
-                CardType.ATTACK -> {
-                    var victimIndex = currentPlayerIndex
-                    do { victimIndex = (victimIndex + 1) % players.size } while (!players[victimIndex].isAlive)
-                    val victim = players[victimIndex]
-                    players[victimIndex] = victim.copy(turnsToTake = victim.turnsToTake + 1)
-                    _uiState.update { it.copy(players = players, gameMessage = "${currentPlayer.name} attacked ${victim.name}!") }
-                    endTurn(skipped = true)
-                }
-                CardType.SKIP -> {
-                    _uiState.update { it.copy(gameMessage = "${currentPlayer.name} skipped their turn.") }
-                    endTurn(skipped = false)
-                }
-                CardType.SEE_FUTURE -> {
-                    _uiState.update { it.copy(showFutureCards = true, futureCards = deck.take(3)) }
-                }
-                CardType.SHUFFLE -> {
-                    deck.shuffle()
-                    _uiState.update { it.copy(gameMessage = "The deck has been shuffled!") }
-                }
-                else -> {}
-            }
-            if (isHost) broadcastState()
-        } else {
-            // Client: Send action to host
-            networkManager.sendActionToHost(GameAction("PLAY_CARD", card, myPlayerId))
-        }
-
-    }
-    */
-
-    fun onPlayCard(card: Card) {
-    if (isHost || _uiState.value.gameMode != GameMode.NETWORK_JOIN) {
-        executePlayCard(card)
-        if (isHost) broadcastState()
-    } else {
-        networkManager.sendActionToHost(GameAction("PLAY_CARD", card, myPlayerId))
-    }
-}
-    fun onHandoffConfirmed() {
-        val nextPlayerName = _uiState.value.players[_uiState.value.currentPlayerIndex].name
-        _uiState.update { it.copy(
-            gameState = GameState.PLAYING,
-            gameMessage = "It's your turn, $nextPlayerName!"
-        )}
-    }
-    private fun executePlayCard(card: Card) {
-        val currentPlayerIndex = _uiState.value.currentPlayerIndex
-
-        if (isHost || _uiState.value.gameMode == GameMode.PASS_AND_PLAY || _uiState.value.gameMode == GameMode.SINGLE_PLAYER) {
-            // Host or local game: Execute logic directly
-            var players = _uiState.value.players.toMutableList()
-            val currentPlayer = players[currentPlayerIndex]
-
-            val newHand = currentPlayer.hand.toMutableList().apply { remove(card) }
-            players[currentPlayerIndex] = currentPlayer.copy(hand = newHand)
-            discardPile.add(card)
-            _uiState.update { it.copy(players = players, discardPile = discardPile.toList()) }
-
-            when (card.type) {
-                CardType.ATTACK -> {
-                    var victimIndex = currentPlayerIndex
-                    do { victimIndex = (victimIndex + 1) % players.size } while (!players[victimIndex].isAlive)
-                    val victim = players[victimIndex]
-                    players[victimIndex] = victim.copy(turnsToTake = victim.turnsToTake + 1)
-                    _uiState.update { it.copy(players = players, gameMessage = "${currentPlayer.name} attacked ${victim.name}!") }
-                    endTurn(skipped = true)
-                }
-                CardType.SKIP -> {
-                    _uiState.update { it.copy(gameMessage = "${currentPlayer.name} skipped their turn.") }
-                    endTurn(skipped = false)
-                }
-                CardType.SEE_FUTURE -> {
-                    _uiState.update { it.copy(showFutureCards = true, futureCards = deck.take(3)) }
-                }
-                CardType.SHUFFLE -> {
-                    deck.shuffle()
-                    _uiState.update { it.copy(gameMessage = "The deck has been shuffled!") }
-                }
-                else -> {}
-            }
-
-        }
-    }
-
-    fun onKittenPlaced(position: Int) {
-        val card = _uiState.value.cardToPlaceBack ?: return
-        deck.add(maxOf(0, minOf(position, deck.size)), card)
-        _uiState.update { it.copy(gameState = GameState.PLAYING, cardToPlaceBack = null) }
-        endTurn(skipped = true)
-    }
-
-    fun onCloseFuture() { _uiState.update { it.copy(showFutureCards = false) } }
-
-    private fun handleExplodingKittenDraw(player: Player, kittenCard: Card) {
-        val defuseCard = player.hand.find { it.type == CardType.DEFUSE }
-        if (defuseCard != null) {
-            val newHand = player.hand.toMutableList().apply { remove(defuseCard) }
-            val newPlayers = _uiState.value.players.toMutableList().apply { this[_uiState.value.currentPlayerIndex] = player.copy(hand = newHand) }
-            discardPile.add(defuseCard)
-            _uiState.update { it.copy(gameState = GameState.AWAITING_KITTEN_PLACEMENT, cardToPlaceBack = kittenCard, players = newPlayers, gameMessage = "${player.name} defused a Kitten! Place it back.")}
-        } else {
-            val newPlayers = _uiState.value.players.toMutableList().apply { this[_uiState.value.currentPlayerIndex] = player.copy(isAlive = false) }
-            discardPile.add(kittenCard)
-            _uiState.update { it.copy(players = newPlayers, gameMessage = "${player.name} exploded! 💥💀") }
-            endTurn(skipped = true)
-        }
-    }
-
-    // Modify the endTurn function in GameViewModel
-    private fun endTurn(skipped: Boolean) {
-        if (isHost || _uiState.value.gameMode == GameMode.PASS_AND_PLAY || _uiState.value.gameMode == GameMode.SINGLE_PLAYER) {
-            val currentPlayer = _uiState.value.players[_uiState.value.currentPlayerIndex]
-            val turnsLeft = currentPlayer.turnsToTake - 1
-
-            var nextPlayerWillTakeOver = false
-
-            if (turnsLeft > 0 && !skipped) {
-                // Player has more turns from an attack, does not hand off
-                val updatedPlayer = currentPlayer.copy(turnsToTake = turnsLeft)
-                val newPlayers = _uiState.value.players.toMutableList().apply { this[_uiState.value.currentPlayerIndex] = updatedPlayer }
-                _uiState.update { it.copy(players = newPlayers, gameMessage = "${currentPlayer.name} has $turnsLeft turns left.") }
-            } else {
-                // Turn is over, find the next player
-                nextPlayerWillTakeOver = true
-                var nextIndex = _uiState.value.currentPlayerIndex
-                do { nextIndex = (nextIndex + 1) % _uiState.value.players.size } while (!_uiState.value.players[nextIndex].isAlive)
-
-                val nextPlayerInitialTurns = if (skipped && turnsLeft > 0) turnsLeft else 1
-                val players = _uiState.value.players.toMutableList()
-                players[_uiState.value.currentPlayerIndex] = currentPlayer.copy(turnsToTake = nextPlayerInitialTurns)
-                _uiState.update { it.copy(players = players, currentPlayerIndex = nextIndex) }
-            }
-
-            val alivePlayers = _uiState.value.players.filter { it.isAlive }
-            if (alivePlayers.size <= 1 && _uiState.value.gameState == GameState.PLAYING) {
-                _uiState.update { it.copy(gameState = GameState.GAME_OVER, winner = alivePlayers.firstOrNull()) }
-                return
-            }
-
-            // NEW LOGIC: Enter HANDOFF state if it's Pass and Play mode
-            if (nextPlayerWillTakeOver && _uiState.value.gameMode == GameMode.PASS_AND_PLAY) {
-                val nextPlayerName = _uiState.value.players[_uiState.value.currentPlayerIndex].name
-                _uiState.update { it.copy(
-                    gameState = GameState.HANDOFF,
-                    gameMessage = "Pass the device to $nextPlayerName."
-                )}
-            }
-            if (isHost) broadcastState()
-        } else {
-            networkManager.sendActionToHost(GameAction("END_TURN", playerId = myPlayerId))
-        }
-
-    }
-
-
-    private fun createOfficialDeck(playerCount: Int): MutableList<Card> {
-        val deck = mutableListOf<Card>()
-        repeat(4) { deck.add(createCard(CardType.ATTACK)) }
-        repeat(4) { deck.add(createCard(CardType.SKIP)) }
-        repeat(5) { deck.add(createCard(CardType.SEE_FUTURE)) }
-        repeat(4) { deck.add(createCard(CardType.SHUFFLE)) }
-        repeat(4) { deck.add(createCard(CardType.NORMAL, "TacoCat")) }
-        repeat(4) { deck.add(createCard(CardType.NORMAL, "Hairy Potato Cat")) }
-        repeat(4) { deck.add(createCard(CardType.NORMAL, "Cattermelon")) }
-        repeat(4) { deck.add(createCard(CardType.NORMAL, "Beard Cat")) }
-
-        val defuseCardsInDeck = if (playerCount <= 2) 2 else 6 - playerCount
-        repeat(defuseCardsInDeck) { deck.add(createCard(CardType.DEFUSE)) }
-        return deck.shuffled().toMutableList()
-    }
-
-    private fun createCard(type: CardType, name: String? = null): Card {
-        val cardName = name ?: type.name.lowercase().replaceFirstChar { it.titlecase() }
-        val displayName = when (type) {
-            CardType.EXPLODING_KITTEN -> "💣 Exploding Kitten"
-            CardType.DEFUSE -> "🛡️ Defuse"
-            CardType.SKIP -> "⏭️ Skip"
-            CardType.ATTACK -> "⚔️ Attack"
-            CardType.SEE_FUTURE -> "🔮 See Future"
-            CardType.SHUFFLE -> "🔀 Shuffle"
-            CardType.NORMAL -> "🐱 $cardName"
-
-        }
-
-        val imageId = when(name){
-            "TacoCat" -> R.drawable.bugger_kitty2
-             "⚔️ Attack"-> R.drawable.godcat
-            "💣 Exploding Kitten" -> R.drawable.devil_kitty
-            "Diffuse kitty" -> R.drawable.diffuse_kitty1
-            "Future kitty" -> R.drawable.rainbowkitty
-            "Cattermelon" -> R.drawable.watermelon_kitty
-            "Hairy Potato Cat" -> R.drawable.zombiekittie
-
-
-            else -> {
-                if (type==CardType.ATTACK){
-                    R.drawable.godcat
-                }else{
-                    if (type==CardType.SEE_FUTURE){
-                        R.drawable.rainbowkitty
-                    }else{
-                        if (CardType.DEFUSE==type){
-                            R.drawable.diffuse_kitty1
-                        }else{
-                            null
-                        }
-                    }
-                }
-            }
-        }
-        return Card("", "", type, displayName,imageId =imageId)
-    }
-
-
-    // Host-side logic
-    private fun onActionReceivedFromClient(action: GameAction) {
-        if (!isHost) return
-
-        // Basic validation: Is it this player's turn?
-        if (action.playerId == _uiState.value.players[_uiState.value.currentPlayerIndex].id) {
-            when (action.actionType) {
-                "PLAY_CARD" -> action.card?.let { onPlayCard(it) }
-                "END_TURN" -> {
-                    endTurn(skipped = false)
-                }
-            }
-            // After any action, broadcast the new truth to all clients
-            broadcastState()
-        }
-    }
-
-    // Client-side logic
-    fun sendAction(actionType: String, card: Card? = null) {
-        if (isHost) return // Hosts process logic directly
-        viewModelScope.launch {
-            val action = GameAction(actionType, card, playerId =playerId )
-            networkManager.sendActionToHost(action)
-        }
-    }
-
-    // Client receives an update and overwrites its local state
-    private fun onStateUpdateReceived(update: GameStateUpdate) {
-        if (isHost) return // Host is the source of truth, ignores its own broadcasts
-        _uiState.update { it.copy(
-            players = update.players,
-            currentPlayerIndex = update.currentPlayerIndex,
-            deckSize = update.deckSize,
-            discardPile = update.discardPile,
-            gameMessage = update.gameMessage,
-            gameState = update.gameState
-        )}
-    }
-    private fun broadcastState() {
-        if (!isHost) return
-        val state = _uiState.value
-        val update = GameStateUpdate(
-            players = state.players,
-            currentPlayerIndex = state.currentPlayerIndex,
-            deckSize = state.deckSize,
-            discardPile = state.discardPile,
-            gameMessage = state.gameMessage,
-            gameState = state.gameState
-        )
-        networkManager.broadcastStateToClients(update)
-    }
-    private fun resetGame() = _uiState.update { GameUiState() }
-
-
-    override fun onCleared() {
-        super.onCleared()
-        networkManager.disconnect()
-    }
-
-
-}
-
-*/
 private const val PREFS_NAME = "ExplodingKittensPrefs"
 private const val SAVED_GAME_KEY = "SavedGame"
 
@@ -539,13 +56,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     if (move.action == "PLAY" && move.card != null) {
                         onPlayCard(move.card)
                     } else {
-                        onEndTurnAndDraw()
+                        executeEndTurnAndDraw()
                     }
                 }
             }
         }.launchIn(viewModelScope)
-
-
     }
 
     private fun setupNetworkCallbacks() {
@@ -617,11 +132,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val deck = createOfficialDeck(playerCount).toMutableList()
         val players = (1..playerCount).map { id ->
             val hand = mutableListOf(createCard(CardType.DEFUSE))
-            repeat(7) { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                hand.add(deck.removeFirst())
-            }else{
-                hand.add(deck.removeAt(0))
-            } }
+            repeat(7) {
+                if (deck.isNotEmpty()) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                        hand.add(deck.removeFirst())
+                    } else {
+                        hand.add(deck.removeAt(0))
+                    }
+                }
+            }
             when (_uiState.value.gameMode) {
                 GameMode.SINGLE_PLAYER -> Player(id = id, name = if (id == 1) "You" else "AI $id", hand = hand, type = if (id == 1) PlayerType.HUMAN else PlayerType.AI)
                 else -> Player(id = id, name = "Player $id", hand = hand)
@@ -646,7 +165,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val savedJson = sharedPreferences.getString(SAVED_GAME_KEY, null)
         if (savedJson != null) {
             val savedState = Json.decodeFromString<GameUiState>(savedJson)
-            // Re-initialize non-serializable parts if necessary
             if (savedState.gameMode == GameMode.SINGLE_PLAYER) {
                 aiPlayer = AIPlayer(savedState.aiDifficulty)
             }
@@ -679,7 +197,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onPlayCard(card: Card) {
-        if (isHost || _uiState.value.gameMode != GameMode.NETWORK_JOIN) {
+        val state = _uiState.value
+        if (state.gameState == GameState.NOPE_CHANCE) {
+            if (card.type == CardType.NOPE) {
+                executeNope(card)
+            }
+            return
+        }
+
+        if (isHost || state.gameMode != GameMode.NETWORK_JOIN) {
             executePlayCard(card)
             if (isHost) broadcastState()
         } else {
@@ -687,53 +213,61 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun onEndTurnAndDraw() {
-        if (isHost || _uiState.value.gameMode != GameMode.NETWORK_JOIN) {
-            executeEndTurnAndDraw()
-            if (isHost) broadcastState()
-        } else {
-            networkManager.sendActionToHost(GameAction("END_TURN", playerId = myPlayerId))
+    private var actionCountdownJob: kotlinx.coroutines.Job? = null
+
+    private fun startNopeTimer(card: Card) {
+        actionCountdownJob?.cancel()
+        _uiState.update { it.copy(
+            gameState = GameState.NOPE_CHANCE,
+            pendingAction = card,
+            nopeCount = 0,
+            actionCountdown = 5,
+            gameMessage = "Playing ${card.name}... Any Nopes?"
+        )}
+
+        actionCountdownJob = viewModelScope.launch {
+            while (_uiState.value.actionCountdown > 0) {
+                delay(1000)
+                _uiState.update { it.copy(actionCountdown = it.actionCountdown - 1) }
+            }
+            resolvePendingAction()
         }
     }
 
-    fun onHandoffConfirmed() {
-        val nextPlayerName = _uiState.value.players[_uiState.value.currentPlayerIndex].name
-        _uiState.update { it.copy(
-            gameState = GameState.PLAYING,
-            gameMessage = "It's your turn, $nextPlayerName!"
-        )}
-    }
-
-    fun onKittenPlaced(position: Int) {
+    private fun executeNope(card: Card) {
         val state = _uiState.value
-        val card = state.cardToPlaceBack ?: return
-        val newDeck = state.deck.toMutableList()
-        newDeck.add(maxOf(0, minOf(position, newDeck.size)), card)
-        _uiState.update { it.copy(gameState = GameState.PLAYING, cardToPlaceBack = null, deck = newDeck) }
-        endTurn(skipped = true)
-        if (isHost) broadcastState()
-    }
+        val players = state.players.toMutableList()
+        val playerWhoNopedIndex = players.indexOfFirst { p -> p.hand.any { it.id == card.id } }
+        if (playerWhoNopedIndex == -1) return
 
-    private fun onStateUpdateReceived(update: GameStateUpdate) {
-        if (isHost) return
+        val player = players[playerWhoNopedIndex]
+        val newHand = player.hand.toMutableList().apply { remove(card) }
+        players[playerWhoNopedIndex] = player.copy(hand = newHand)
+
+        val newDiscard = state.discardPile.toMutableList().apply { add(card) }
+        val newNopeCount = state.nopeCount + 1
+
         _uiState.update { it.copy(
-            players = update.players,
-            currentPlayerIndex = update.currentPlayerIndex,
-            deck = update.deck,
-            discardPile = update.discardPile,
-            gameMessage = update.gameMessage,
-            gameState = update.gameState
+            players = players,
+            discardPile = newDiscard,
+            nopeCount = newNopeCount,
+            actionCountdown = 5,
+            gameMessage = "NOPE! (Stack: $newNopeCount)"
         )}
     }
 
-    private fun onActionReceivedFromClient(action: GameAction) {
-        if (!isHost) return
-        if (action.playerId == _uiState.value.players[_uiState.value.currentPlayerIndex].id) {
-            when (action.actionType) {
-                "PLAY_CARD" -> action.card?.let { executePlayCard(it) }
-                "END_TURN" -> executeEndTurnAndDraw()
-            }
-            broadcastState()
+    private fun resolvePendingAction() {
+        actionCountdownJob?.cancel()
+        val state = _uiState.value
+        val card = state.pendingAction ?: return
+        val isCanceled = state.nopeCount % 2 != 0
+
+        _uiState.update { it.copy(gameState = GameState.PLAYING, pendingAction = null, nopeCount = 0) }
+
+        if (isCanceled) {
+            _uiState.update { it.copy(gameMessage = "${card.name} was NOPED!") }
+        } else {
+            applyCardEffect(card)
         }
     }
 
@@ -745,15 +279,78 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         val newHand = currentPlayer.hand.toMutableList().apply { remove(card) }
         players[currentPlayerIndex] = currentPlayer.copy(hand = newHand)
-
         val newDiscard = state.discardPile.toMutableList().apply { add(card) }
 
         _uiState.update { it.copy(players = players, discardPile = newDiscard) }
 
+        if (card.type == CardType.NORMAL) {
+            handleCatCardPlay(card, currentPlayerIndex)
+        } else if (card.type == CardType.NOPE) {
+            _uiState.update { it.copy(gameMessage = "You can't Nope nothing!") }
+        } else {
+            startNopeTimer(card)
+        }
+    }
+
+    private fun handleCatCardPlay(card: Card, playerIndex: Int) {
+        val state = _uiState.value
+        val player = state.players[playerIndex]
+        val secondCard = player.hand.find { it.name == card.name }
+
+        if (secondCard != null) {
+            val newHand = player.hand.toMutableList().apply { remove(secondCard) }
+            val players = state.players.toMutableList()
+            players[playerIndex] = player.copy(hand = newHand)
+            val newDiscard = state.discardPile.toMutableList().apply { add(secondCard) }
+
+            _uiState.update { it.copy(
+                players = players,
+                discardPile = newDiscard,
+                gameMessage = "${player.name} played a pair of ${card.name}s! Stealing a card..."
+            )}
+            startStealingLogic(playerIndex)
+        } else {
+            _uiState.update { it.copy(gameMessage = "${player.name} played a ${card.name}. (Need a pair to steal)") }
+        }
+    }
+
+    private fun startStealingLogic(thiefIndex: Int) {
+        val state = _uiState.value
+        var victimIndex = (thiefIndex + 1) % state.players.size
+        while (!state.players[victimIndex].isAlive) {
+            victimIndex = (victimIndex + 1) % state.players.size
+        }
+
+        val victim = state.players[victimIndex]
+        if (victim.hand.isNotEmpty()) {
+            val stolenCard = victim.hand.random()
+            val newVictimHand = victim.hand.toMutableList().apply { remove(stolenCard) }
+            val thief = state.players[thiefIndex]
+            val newThiefHand = thief.hand.toMutableList().apply { add(stolenCard) }
+
+            val players = state.players.toMutableList()
+            players[victimIndex] = victim.copy(hand = newVictimHand)
+            players[thiefIndex] = thief.copy(hand = newThiefHand)
+
+            _uiState.update { it.copy(
+                players = players,
+                gameMessage = "${thief.name} stole a card from ${victim.name}!"
+            )}
+        }
+    }
+
+    private fun applyCardEffect(card: Card) {
+        val state = _uiState.value
+        val players = state.players.toMutableList()
+        val currentPlayerIndex = state.currentPlayerIndex
+        val currentPlayer = players[currentPlayerIndex]
+
         when (card.type) {
             CardType.ATTACK -> {
-                var victimIndex = currentPlayerIndex
-                do { victimIndex = (victimIndex + 1) % players.size } while (!players[victimIndex].isAlive)
+                var victimIndex = (currentPlayerIndex + 1) % players.size
+                while (!players[victimIndex].isAlive) {
+                    victimIndex = (victimIndex + 1) % players.size
+                }
                 val victim = players[victimIndex]
                 players[victimIndex] = victim.copy(turnsToTake = victim.turnsToTake + 1)
                 _uiState.update { it.copy(players = players, gameMessage = "${currentPlayer.name} attacked ${victim.name}!") }
@@ -785,7 +382,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             val newDeck = state.deck.toMutableList()
             val drawnCard = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                 newDeck.removeFirst()
-            }else{
+            } else {
                 newDeck.removeAt(0)
             }
 
@@ -849,6 +446,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             val nextPlayerName = _uiState.value.players[_uiState.value.currentPlayerIndex].name
             _uiState.update { it.copy(gameState = GameState.HANDOFF, gameMessage = "Pass the device to $nextPlayerName.")}
         }
+        if (isHost) broadcastState()
     }
 
     private fun broadcastState() {
@@ -871,10 +469,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         repeat(4) { deck.add(createCard(CardType.SKIP)) }
         repeat(5) { deck.add(createCard(CardType.SEE_FUTURE)) }
         repeat(4) { deck.add(createCard(CardType.SHUFFLE)) }
+        repeat(5) { deck.add(createCard(CardType.NOPE)) }
+
         repeat(4) { deck.add(createCard(CardType.NORMAL, "TacoCat")) }
         repeat(4) { deck.add(createCard(CardType.NORMAL, "Hairy Potato Cat")) }
         repeat(4) { deck.add(createCard(CardType.NORMAL, "Cattermelon")) }
         repeat(4) { deck.add(createCard(CardType.NORMAL, "Beard Cat")) }
+        repeat(4) { deck.add(createCard(CardType.NORMAL, "Rainbow-ralphing Cat")) }
 
         val defuseCardsInDeck = if (playerCount <= 2) 2 else 6 - playerCount
         repeat(defuseCardsInDeck) { deck.add(createCard(CardType.DEFUSE)) }
@@ -891,7 +492,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             CardType.SEE_FUTURE -> "🔮 See Future"
             CardType.SHUFFLE -> "🔀 Shuffle"
             CardType.NORMAL -> "🐱 $cardName"
-
+            CardType.NOPE -> "🙅 Nope"
         }
 
         val imageId = when(name){
@@ -903,25 +504,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             "Cattermelon" -> R.drawable.watermelon_kitty
             "Hairy Potato Cat" -> R.drawable.zombiekittie
             "Beard Cat" -> R.drawable.beard_kitty
-
-
+            "Rainbow-ralphing Cat" -> R.drawable.rainbowkitty
+            "🙅 Nope" -> R.drawable.bugger_kitty2
             else -> {
-                if (type==CardType.ATTACK){
-                    R.drawable.godcat
-                }else{
-                    if (type==CardType.SEE_FUTURE){
-                        R.drawable.rainbowkitty
-                    }else{
-                        if (CardType.DEFUSE==type){
-                            R.drawable.diffuse_kitty1
-                        }else{
-                            null
-                        }
-                    }
+                when (type) {
+                    CardType.ATTACK -> R.drawable.godcat
+                    CardType.SEE_FUTURE -> R.drawable.rainbowkitty
+                    CardType.DEFUSE -> R.drawable.diffuse_kitty1
+                    else -> null
                 }
             }
         }
-        return Card("", "", type, displayName,imageId =imageId)
+        return Card(suit = "", rank = "", type = type, name = displayName, imageId = imageId)
     }
 
     private fun resetGame() {
@@ -941,5 +535,47 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onBackToMenu() = resetGame()
     fun onCloseFuture() { _uiState.update { it.copy(showFutureCards = false) } }
+    fun onEndTurnAndDraw() = executeEndTurnAndDraw()
 
+    private fun onActionReceivedFromClient(action: GameAction) {
+        if (!isHost) return
+
+        val state = _uiState.value
+        val currentPlayer = state.players[state.currentPlayerIndex]
+        if (action.playerId == currentPlayer.id) {
+            when (action.actionType) {
+                "PLAY_CARD" -> action.card?.let { onPlayCard(it) }
+                "END_TURN" -> executeEndTurnAndDraw()
+            }
+            broadcastState()
+        }
+    }
+
+    private fun onStateUpdateReceived(update: GameStateUpdate) {
+        if (isHost) return
+        _uiState.update { it.copy(
+            players = update.players,
+            currentPlayerIndex = update.currentPlayerIndex,
+            deck = update.deck,
+            discardPile = update.discardPile,
+            gameMessage = update.gameMessage,
+            gameState = update.gameState
+        )}
+    }
+
+    fun onKittenPlaced(position: Int) {
+        val card = _uiState.value.cardToPlaceBack ?: return
+        val newDeck = _uiState.value.deck.toMutableList()
+        newDeck.add(maxOf(0, minOf(position, newDeck.size)), card)
+        _uiState.update { it.copy(gameState = GameState.PLAYING, cardToPlaceBack = null, deck = newDeck) }
+        endTurn(skipped = true)
+    }
+
+    fun onHandoffConfirmed() {
+        val nextPlayerName = _uiState.value.players[_uiState.value.currentPlayerIndex].name
+        _uiState.update { it.copy(
+            gameState = GameState.PLAYING,
+            gameMessage = "It's your turn, $nextPlayerName!"
+        )}
+    }
 }

@@ -79,7 +79,7 @@ fun GameScreen(
                 onBack = onBackToMenu
             )
             GameState.TUTORIAL -> TutorialScreen(onBack = onBackToMenu)
-            GameState.PLAYING, GameState.AWAITING_KITTEN_PLACEMENT -> {
+            GameState.PLAYING, GameState.AWAITING_KITTEN_PLACEMENT, GameState.NOPE_CHANCE, GameState.STEAL_CARD -> {
                 GamePlayScreen(uiState, onPlayCard, onEndTurnAndDraw, onCloseFuture)
                 if (uiState.gameState == GameState.AWAITING_KITTEN_PLACEMENT) {
                     PlaceKittenDialog(uiState.deckSize, onKittenPlaced)

@@ -72,7 +72,8 @@ data class ScheduledPayment(
     val amount: Double,
     val description: String,
     val source: String,
-    val frequency: String, // weekly, monthly, annually
+    val category: String = "scheduled payments", // e.g. rent, utilities, etc.
+    val frequency: String, // weekly, monthly, annually, daily
     val nextPaymentDate: Long,
     val numberOfPayments: Int?, // null means indefinite
     val paymentsMade: Int = 0,

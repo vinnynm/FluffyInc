@@ -40,7 +40,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.Card
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.Player
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.states.GameMode
+import com.enigma.fluffyinc.apps.games.explodingkitties3.data.states.GameState
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.states.GameUiState
 import com.enigma.fluffyinc.games.explodingkitties3.data.types.AIDifficulty
 import com.enigma.fluffyinc.games.explodingkitties3.data.types.CardType
@@ -103,7 +108,7 @@ fun ExplodingKittens(
             GameState.MENU -> MainMenuScreen(onGameModeSelected, onShowTutorial)
             GameState.SETUP -> SetupScreen(uiState, onPlayerCountChange, onAIDifficultyChange, onStartGame, onBackToMenu)
             GameState.TUTORIAL -> TutorialScreen(onBack = onBackToMenu)
-            GameState.PLAYING, GameState.AWAITING_KITTEN_PLACEMENT -> {
+            GameState.PLAYING, GameState.AWAITING_KITTEN_PLACEMENT, GameState.NOPE_CHANCE -> {
                 GamePlayScreen(uiState, onPlayCard, onEndTurnAndDraw, onCloseFuture)
                 if (uiState.gameState == GameState.AWAITING_KITTEN_PLACEMENT) {
                     PlaceKittenDialog(uiState.deckSize, onKittenPlaced)
@@ -176,12 +181,13 @@ fun GamePlayScreen(
     onEndTurnAndDraw: () -> Unit,
     onCloseFuture: () -> Unit
 ) {
-    // This defensive check prevents crashes if the UI receives a transient
-    // invalid state during a complex, multi-stage update.
     if (uiState.players.isEmpty() || uiState.currentPlayerIndex >= uiState.players.size) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Loading Game...")
-            CircularProgressIndicator()
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(16.dp))
+                Text("Waiting for Players...", color = MaterialTheme.colorScheme.primary)
+            }
         }
         return
     }
@@ -189,112 +195,190 @@ fun GamePlayScreen(
     val currentPlayer = uiState.players[uiState.currentPlayerIndex]
 
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Display other players (AIs) at the top
+        // Player status bar
         LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            contentPadding = PaddingValues(horizontal = 8.dp)
         ) {
-            items(uiState.players.filter { it.id != currentPlayer.id }) { player ->
-                PlayerStatusCard(player)
+            items(uiState.players) { player ->
+                PlayerStatusCard(player = player, isCurrent = player.id == currentPlayer.id)
             }
         }
 
-        // Deck and Discard pile
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
+        // Central Deck/Discard Area
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("DECK", style = MaterialTheme.typography.labelMedium)
-                Card(modifier = Modifier.size(80.dp, 110.dp)) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Draw (${uiState.deckSize})")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Deck
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "DECK",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Card(
+                        modifier = Modifier
+                            .size(100.dp, 140.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                    ) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "💣",
+                                    fontSize = 24.sp,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                                Text(
+                                    "${uiState.deckSize}",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
                     }
                 }
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("DISCARD", style = MaterialTheme.typography.labelMedium)
-                Card(
-                    modifier = Modifier.size(80.dp, 110.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary)
-                ) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = uiState.discardPile.lastOrNull()?.name ?: "Empty",
-                            fontSize = 10.sp,
-                            textAlign = TextAlign.Center,
-                            color = Color.White,
-                            modifier = Modifier.padding(4.dp)
-                        )
-                        if (uiState.discardPile.isNullOrEmpty()){
-                            Text(
-                                text = uiState.discardPile.lastOrNull()?.name ?: "Empty",
-                                fontSize = 10.sp,
-                                textAlign = TextAlign.Center,
-                                color = Color.White,
-                                modifier = Modifier.padding(4.dp)
-                            )
-                        }else{
-                            PlayableCard(enabled = false, card = uiState.discardPile.last(), onClick = {})
+
+                // Discard Pile
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "DISCARD",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Card(
+                        modifier = Modifier
+                            .size(100.dp, 140.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            if (uiState.discardPile.isEmpty()) {
+                                Text(
+                                    "EMPTY",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                            } else {
+                                PlayableCard(
+                                    enabled = false,
+                                    card = uiState.discardPile.last(),
+                                    onClick = {},
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
 
-        // Game message and action button
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = uiState.gameMessage,
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
+            // Game Message / Action Status
+            Surface(
                 modifier = Modifier
-                    .padding(8.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                        RoundedCornerShape(8.dp)
-                    )
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            if (currentPlayer.turnsToTake > 1) {
+                    .padding(vertical = 16.dp)
+                    .fillMaxWidth(0.9f),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                tonalElevation = 4.dp
+            ) {
                 Text(
-                    text = "Turns Left: ${currentPlayer.turnsToTake}",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(top = 8.dp)
+                    text = uiState.gameMessage,
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(16.dp),
+                    fontWeight = FontWeight.Medium
                 )
             }
+        }
 
-            Spacer(Modifier.height(8.dp))
-
+        // Action controls
+        Column(
+            modifier = Modifier.padding(bottom = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Button(
                 onClick = onEndTurnAndDraw,
-                enabled = currentPlayer.type == PlayerType.HUMAN // Disable button during AI turn
+                enabled = currentPlayer.type == PlayerType.HUMAN,
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(56.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
             ) {
-                Text("End Turn & Draw Card", fontSize = 16.sp)
+                Text("End Turn & Draw Card", style = MaterialTheme.typography.titleMedium)
             }
         }
 
         // Current player's hand
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Your Hand (${currentPlayer.hand.size})", style = MaterialTheme.typography.titleMedium)
-            if (currentPlayer.isAlive && currentPlayer.type == PlayerType.HUMAN) {
+        val showFullHand = uiState.gameState != GameState.NOPE_CHANCE || currentPlayer.type == PlayerType.HUMAN
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                )
+                .padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                if (uiState.gameState == GameState.NOPE_CHANCE) "QUICK! PLAY A NOPE?" else "Your Hand (${currentPlayer.hand.size})",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (uiState.gameState == GameState.NOPE_CHANCE) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (uiState.gameState == GameState.NOPE_CHANCE) {
+                // In NOPE_CHANCE, show countdown
+                LinearProgressIndicator(
+                    progress = { uiState.actionCountdown / 5f },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            if (currentPlayer.isAlive) {
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(currentPlayer.hand) { card ->
+                        val isNope = card.type == CardType.NOPE
+                        val canPlay = if (uiState.gameState == GameState.NOPE_CHANCE) isNope else card.type !in listOf(CardType.EXPLODING_KITTEN, CardType.DEFUSE)
+                        
                         PlayableCard(
                             card = card,
                             onClick = { onPlayCard(card) },
-                            // A card is playable if it's not an exploding kitten or a defuse (defuse is played automatically)
-                            enabled = card.type !in listOf(CardType.EXPLODING_KITTEN, CardType.DEFUSE)
+                            enabled = canPlay && currentPlayer.type == PlayerType.HUMAN
                         )
                     }
                 }
@@ -307,10 +391,25 @@ fun GamePlayScreen(
                 onDismissRequest = onCloseFuture,
                 title = { Text("🔮 Future Cards") },
                 text = {
-                    Column {
-                        Text("The next 3 cards are:")
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         uiState.futureCards.forEachIndexed { index, card ->
-                            Text("${index + 1}. ${card.name}")
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "${index + 1}",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(end = 12.dp)
+                                    )
+                                    Text(card.name, style = MaterialTheme.typography.bodyLarge)
+                                }
+                            }
                         }
                     }
                 },
@@ -326,33 +425,68 @@ fun GamePlayScreen(
 // The following are included for completeness.
 
 @Composable
-fun PlayerStatusCard(player: Player) {
+fun PlayerStatusCard(player: Player, isCurrent: Boolean = false) {
+    val borderColor = if (isCurrent) MaterialTheme.colorScheme.primary else Color.Transparent
+    val borderWidth = if (isCurrent) 2.dp else 0.dp
+
     Card(
+        modifier = Modifier
+            .padding(4.dp)
+            .width(100.dp),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(borderWidth, borderColor),
         colors = CardDefaults.cardColors(
-            containerColor = if (player.isAlive) MaterialTheme.colorScheme.surface
-            else MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
-        )
+            containerColor = if (player.isAlive) {
+                if (isCurrent) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.surfaceVariant
+            } else MaterialTheme.colorScheme.errorContainer
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isCurrent) 8.dp else 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Icon(
+                imageVector = if (player.type == PlayerType.HUMAN) Icons.Default.Person else Icons.Default.People,
+                contentDescription = null,
+                tint = if (player.isAlive) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(24.dp)
+            )
             Text(
                 player.name,
-                style = MaterialTheme.typography.titleSmall,
-                color = if (player.isAlive) LocalContentColor.current else Color.Gray
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                color = if (player.isAlive) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onErrorContainer
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                if (player.isAlive) "Cards: ${player.hand.size}" else "💀 Exploded",
-                fontSize = 12.sp,
-                color = if (player.isAlive) LocalContentColor.current else Color.Gray
+                if (player.isAlive) "${player.hand.size} Cards" else "💀 EXPLODED",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (player.isAlive) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onErrorContainer
             )
+            if (player.isAlive && player.turnsToTake > 1) {
+                Text(
+                    "Turns: ${player.turnsToTake}",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
 
 @Composable
-fun PlayableCard(card: Card, onClick: () -> Unit, enabled: Boolean) {
+fun PlayableCard(
+    card: Card,
+    onClick: () -> Unit,
+    enabled: Boolean,
+    isSelected: Boolean = false,
+    modifier: Modifier = Modifier
+) {
     val cardColor = when (card.type) {
         CardType.EXPLODING_KITTEN -> Color(0xFFFF1744)
         CardType.DEFUSE -> Color(0xFF00E676)
@@ -361,46 +495,68 @@ fun PlayableCard(card: Card, onClick: () -> Unit, enabled: Boolean) {
         CardType.SEE_FUTURE -> Color(0xFF9C27B0)
         CardType.SHUFFLE -> Color(0xFFFF9800)
         CardType.NORMAL -> Color(0xFF607D8B)
+        CardType.NOPE -> Color(0xFF424242)
     }
+
     Card(
-        modifier = Modifier
-            .size(80.dp, 110.dp)
+        modifier = modifier
+            .size(85.dp, 120.dp)
             .clickable(enabled = enabled, onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (enabled) cardColor else cardColor.copy(alpha = 0.5f)
         ),
-        elevation = CardDefaults.cardElevation(if (enabled) 4.dp else 2.dp),
-        border = if (enabled) BorderStroke(2.dp, Color.White) else null
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 12.dp else if (enabled) 6.dp else 2.dp),
+        border = BorderStroke(
+            width = if (isSelected) 3.dp else 1.dp,
+            color = if (isSelected) Color.Yellow else Color.White.copy(alpha = 0.5f)
+        )
     ) {
-        if (card.imageId!=null){
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(4.dp)
-            ){
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Card Content
+            if (card.imageId != null) {
                 Image(
                     painter = painterResource(card.imageId),
                     contentDescription = card.name,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize()
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(4.dp)
                 )
             }
-        }else{
+
+            // Card Overlay / Name
             Box(
-                Modifier.fillMaxSize().padding(4.dp),
-                contentAlignment = Alignment.Center
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
+                            startY = 60f
+                        )
+                    )
+                    .padding(4.dp),
+                contentAlignment = Alignment.BottomCenter
             ) {
                 Text(
-                    card.name,
+                    text = card.name,
                     fontSize = 10.sp,
                     textAlign = TextAlign.Center,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
-                    lineHeight = 12.sp
+                    lineHeight = 11.sp,
+                    maxLines = 2
+                )
+            }
+
+            if (!enabled && card.type != CardType.EXPLODING_KITTEN) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.2f))
                 )
             }
         }
-
     }
 }
 
@@ -444,16 +600,16 @@ fun TutorialScreen(onBack: () -> Unit) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp)) {
             TutorialSection("The Goal", "If you draw an Exploding Kitten, you lose. You win by being the last player left alive!")
             TutorialSection("Setup", "Each player starts with 1 Defuse card and 7 random cards. The deck is then seeded with one fewer Exploding Kittens than there are players.")
-            TutorialSection("Your Turn", "1. Play as many cards as you'd like from your hand to perform actions.\n2. When you are done playing cards, end your turn by pressing the 'End Turn & Draw Card' button.")
+            TutorialSection("Your Turn", "1. Play as many cards as you'd like from your hand to perform actions.\n2. When you are done playing cards, end your turn by drawing a card. You win by being the last player left alive!")
             TutorialSection("Card Types",
                 "💣 Exploding Kitten: You lose immediately unless you have a Defuse card.\n\n" +
                         "🛡️ Defuse: If you draw a Kitten, play this card instead of dying. You then get to secretly place the Kitten back into the deck anywhere you like.\n\n" +
-                        "⚔️ Attack: Ends your turn without drawing. Force the next player to take two turns. A 'turn' consists of playing cards then drawing one. The victim will have to do this twice.\n\n" +
+                        "⚔️ Attack: Ends your turn without drawing. Force the next player to take two turns.\n\n" +
                         "⏭️ Skip: End your turn without drawing a card. If you were Attacked, this cancels one of the two turns you must take.\n\n" +
                         "🔮 See the Future: Privately look at the top 3 cards of the deck.\n\n" +
                         "🔀 Shuffle: Shuffle the deck.\n\n" +
-                        "🐱 Cat Cards: These do nothing on their own. (Advanced Rule: In the full game, you can play pairs to steal cards from others).\n\n" +
-                        "🙅 Nope (Advanced Rule): In the full game, this card can be played at any time to cancel another player's action card."
+                        "🐱 Cat Cards: Play a pair of matching cat cards to steal a random card from another player.\n\n" +
+                        "🙅 Nope: Play this card at any time to cancel another player's action card. Any number of Nopes can be played on top of each other. An odd number of Nopes cancels the original action; an even number allows it."
             )
         }
     }

@@ -1,42 +1,16 @@
 package com.enigma.fluffyinc.apps.finance.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -44,9 +18,7 @@ import androidx.navigation.NavController
 import com.enigma.fluffyinc.apps.finance.data.ScheduledPayment
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,20 +74,40 @@ fun AddScheduledPaymentDialog(onDismiss: () -> Unit, onConfirm: (ScheduledPaymen
     var amount by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var source by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("Rent") }
     var frequency by remember { mutableStateOf("Monthly") }
     var numberOfPayments by remember { mutableStateOf("") }
     var isIndefinite by remember { mutableStateOf(true) }
     var expandedFreq by remember { mutableStateOf(false) }
+    var expandedCat by remember { mutableStateOf(false) }
 
-    val frequencies = listOf("Weekly", "Monthly", "Annually")
-    val calendar = Calendar.getInstance()
-    calendar.add(Calendar.DAY_OF_YEAR, 7)
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = System.currentTimeMillis()
+    )
+
+    val frequencies = listOf("Daily", "Weekly", "Monthly", "Annually")
+    val categories = listOf("Rent", "Utilities", "Subscription", "Insurance", "Loan", "Other")
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("OK") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Scheduled Payment") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it },
@@ -131,9 +123,40 @@ fun AddScheduledPaymentDialog(onDismiss: () -> Unit, onConfirm: (ScheduledPaymen
                 OutlinedTextField(
                     value = source,
                     onValueChange = { source = it },
-                    label = { Text("Source") },
+                    label = { Text("Source (Bank/Card)") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // Category Dropdown
+                ExposedDropdownMenuBox(
+                    expanded = expandedCat,
+                    onExpandedChange = { expandedCat = it }
+                ) {
+                    OutlinedTextField(
+                        value = category,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Expense Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedCat) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expandedCat,
+                        onDismissRequest = { expandedCat = false }
+                    ) {
+                        categories.forEach { cat ->
+                            DropdownMenuItem(
+                                text = { Text(cat) },
+                                onClick = {
+                                    category = cat
+                                    expandedCat = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Frequency Dropdown
                 ExposedDropdownMenuBox(
                     expanded = expandedFreq,
                     onExpandedChange = { expandedFreq = it }
@@ -144,7 +167,7 @@ fun AddScheduledPaymentDialog(onDismiss: () -> Unit, onConfirm: (ScheduledPaymen
                         readOnly = true,
                         label = { Text("Frequency") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedFreq) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(type= MenuAnchorType.PrimaryNotEditable)
+                        modifier = Modifier.fillMaxWidth().menuAnchor(type = MenuAnchorType.PrimaryNotEditable)
                     )
                     ExposedDropdownMenu(
                         expanded = expandedFreq,
@@ -161,6 +184,20 @@ fun AddScheduledPaymentDialog(onDismiss: () -> Unit, onConfirm: (ScheduledPaymen
                         }
                     }
                 }
+
+                // Start Date Picker
+                OutlinedTextField(
+                    value = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(datePickerState.selectedDateMillis ?: System.currentTimeMillis())),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Start Date") },
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(Icons.Default.DateRange, "Select Date")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(
@@ -188,8 +225,9 @@ fun AddScheduledPaymentDialog(onDismiss: () -> Unit, onConfirm: (ScheduledPaymen
                             amount = amt,
                             description = description,
                             source = source,
+                            category = category,
                             frequency = frequency,
-                            nextPaymentDate = calendar.timeInMillis,
+                            nextPaymentDate = datePickerState.selectedDateMillis ?: System.currentTimeMillis(),
                             numberOfPayments = if (isIndefinite) null else numberOfPayments.toIntOrNull()
                         ))
                     }
@@ -217,9 +255,10 @@ fun ScheduledPaymentCard(payment: ScheduledPayment, viewModel: FinanceViewModel)
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(payment.description, style = MaterialTheme.typography.titleMedium)
-                    Text("${payment.frequency} - ${payment.source}",
+                    Text("${payment.category} • ${payment.frequency}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.secondary)
+                    Text("Source: ${payment.source}", style = MaterialTheme.typography.bodySmall)
                     Text("Next: ${SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(payment.nextPaymentDate))}",
                         style = MaterialTheme.typography.bodySmall)
 

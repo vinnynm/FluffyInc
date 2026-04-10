@@ -29,6 +29,12 @@ data class GameUiState(
     val connectedPlayers: List<String> = emptyList(),
     val cardToPlaceBack: Card? = null,
 
+    // --- NEW: Nope Stack Logic ---
+    val pendingAction: Card? = null,
+    val nopeCount: Int = 0,
+    val actionCountdown: Int = 0, // In seconds or steps
+    val victimId: Int? = null, // For targeted actions
+
     // --- NEW: Flag to show/hide the resume button on the UI ---
     val hasSavedGame: Boolean = false
 ) {

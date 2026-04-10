@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Card(
+    val id: String = java.util.UUID.randomUUID().toString(),
     val suit: String,
     val rank: String,
     val type: CardType,

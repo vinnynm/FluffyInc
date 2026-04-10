@@ -12,6 +12,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.QuestionMark
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,11 +24,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.enigma.fluffyinc.navigation.Screens
 
 sealed class GameType(val title: String, val icon: ImageVector, val color: Color, val route: String) {
     data object ExplodingKittens : GameType("Exploding Kittens", Icons.Default.Pets, Color(0xFFFF1744), "exploding_kittens")
     data object WildTactics : GameType("Wild Tactics", Icons.Default.Casino, Color(0xFF4CAF50), "wild_tactics")
-    data object PowerGame : GameType("Power Game", Icons.Default.Bolt, Color(0xFF2196F3), "power_game")
+    data object Lexicon : GameType("Lexicon", Icons.Default.Translate, Color(0xFFFFC107), Screens.Lexicon.route)
+    data object Betweenle : GameType("Betweenle", Icons.Default.QuestionMark, Color(0xFF9C27B0), Screens.Betweenle.route)
+    data object Absurdle : GameType("Absurdle", Icons.Default.QuestionMark, Color(0xFFE91E63), Screens.Absurdle.route)
+    data object ChromaWord : GameType("ChromaWord", Icons.Default.Translate, Color(0xFF00BCD4), Screens.ChromaWord.route)
+    data object KillerSudoku : GameType("Killer Sudoku", Icons.Default.Casino, Color(0xFFFF5722), Screens.KillerSudoku.route)
+    data object Sudoku : GameType("Sudoku", Icons.Default.Bolt, Color(0xFF4ECCA3), Screens.Sudoku.route)
+    data object LightsOut : GameType("Lights Out", Icons.Default.Bolt, Color(0xFF673AB7), Screens.LightsOut.route)
 }
 
 @Composable
@@ -34,7 +43,13 @@ fun GameDashboard(onGameSelected: (String) -> Unit) {
     val games = listOf(
         GameType.ExplodingKittens,
         GameType.WildTactics,
-        GameType.PowerGame
+        GameType.Lexicon,
+        GameType.Betweenle,
+        GameType.Absurdle,
+        GameType.ChromaWord,
+        GameType.KillerSudoku,
+        GameType.Sudoku,
+        GameType.LightsOut
     )
 
     Column(

@@ -10,5 +10,6 @@ enum class CardType {
     ATTACK,
     SEE_FUTURE,
     SHUFFLE,
-    NORMAL
+    NORMAL,
+    NOPE
 }

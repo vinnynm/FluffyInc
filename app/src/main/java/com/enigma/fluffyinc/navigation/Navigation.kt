@@ -5,7 +5,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -16,7 +22,10 @@ import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Games
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,6 +36,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,12 +47,25 @@ import androidx.navigation.compose.rememberNavController
 import com.enigma.fluffyinc.R
 import com.enigma.fluffyinc.apps.finance.FinanceApp
 import com.enigma.fluffyinc.apps.games.GameDashboard
+import com.enigma.fluffyinc.apps.games.absurdle.viewmodel.AbsurdleViewModel
 import com.enigma.fluffyinc.apps.games.explodingkitties3.game.ExplodingKittens
 import com.enigma.fluffyinc.apps.games.explodingkitties3.game.GameViewModel
+import com.enigma.fluffyinc.apps.games.killersudoku.KillerSudokuGame
+import com.enigma.fluffyinc.apps.games.killersudoku.SudokuGame
+import com.enigma.fluffyinc.apps.games.lexicon.ScrabbleGameViewModelFactory
+import com.enigma.fluffyinc.apps.games.lexicon.data.WordDictionaryManager
+import com.enigma.fluffyinc.apps.games.lexicon.ui.ScrabbleGameApp
+import com.enigma.fluffyinc.apps.games.lexicon.ui.ScrabbleGameViewModel
 import com.enigma.fluffyinc.apps.games.wildtactics.ui.WildTacticsGameScreen
 import com.enigma.fluffyinc.apps.readables.ReadingMainScreen
 import com.enigma.fluffyinc.apps.settings.SettingsScreen
 import com.enigma.fluffyinc.lists.presentation.navigation.listsGraph
+import com.enigma.fluffyinc.apps.games.absurdle.ui.GameScreen as AbsurdleScreen
+import com.enigma.fluffyinc.apps.games.betweenle.ui.GameScreen as BetweenleScreen
+import com.enigma.fluffyinc.apps.games.chromaword.ui.GameScreen as ChromaWordScreen
+import com.enigma.fluffyinc.apps.games.chromaword.viewmodel.GameViewModel as ChromaWordViewModel
+import com.enigma.fluffyinc.apps.games.lightsOut.LightsOutScreen
+import com.enigma.fluffyinc.apps.games.lightsOut.LightsOutViewModel
 
 @Composable
 fun MainNavigation() {
@@ -81,6 +104,43 @@ fun MainNavigation() {
             )
         }
         composable("wild_tactics") { WildTacticsGameScreen() }
+        
+        composable(Screens.Lexicon.route) {
+            val context = LocalContext.current
+            val dictionaryManager = remember { WordDictionaryManager(context) }
+            val lexiconViewModel: ScrabbleGameViewModel = viewModel(
+                factory = ScrabbleGameViewModelFactory(dictionaryManager, context)
+            )
+            ScrabbleGameApp(viewModel = lexiconViewModel)
+        }
+
+        composable(Screens.Betweenle.route) {
+            BetweenleScreen()
+        }
+
+        composable(Screens.Absurdle.route) {
+            val absurdleViewModel: AbsurdleViewModel = viewModel()
+            AbsurdleScreen(absurdleViewModel)
+        }
+
+        composable(Screens.ChromaWord.route) {
+            val chromaWordViewModel: ChromaWordViewModel = viewModel()
+            ChromaWordScreen(chromaWordViewModel)
+        }
+
+        composable(Screens.KillerSudoku.route) {
+            KillerSudokuGame()
+        }
+
+        composable(Screens.Sudoku.route) {
+            SudokuGame()
+        }
+
+        composable(Screens.LightsOut.route) {
+            val lightsOutViewModel: LightsOutViewModel = viewModel()
+            LightsOutScreen(lightsOutViewModel)
+        }
+
         composable(Screens.Settings.route) { SettingsScreen(navController) }
         listsGraph(navController)
     }

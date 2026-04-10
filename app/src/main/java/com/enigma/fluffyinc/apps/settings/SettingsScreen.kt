@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,7 +63,7 @@ fun SettingsScreen(navController: NavController, epubViewModel: EpubReaderViewMo
             }
             
             item {
-                Divider()
+                HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
                 Spacer(Modifier.height(8.dp))
                 Text("App Version", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text("1.0.0 (Stable)", style = MaterialTheme.typography.bodyMedium)

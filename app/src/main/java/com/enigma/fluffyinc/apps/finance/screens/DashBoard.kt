@@ -234,6 +234,28 @@ fun DashboardScreen(viewModel: FinanceViewModel, navController: NavController) {
                         onClick = { navController.navigate("shopping") }
                     )
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CompactActionCard(
+                        "Scheduled",
+                        Icons.Default.DateRange,
+                        Color(0xFFFF9800),
+                        Modifier.weight(1f),
+                        onClick = { navController.navigate("scheduled") }
+                    )
+                    CompactActionCard(
+                        "History",
+                        Icons.Default.History,
+                        Color(0xFF9C27B0),
+                        Modifier.weight(1f),
+                        onClick = { navController.navigate("transactions") }
+                    )
+                }
             }
 
             // Upcoming Payments Section

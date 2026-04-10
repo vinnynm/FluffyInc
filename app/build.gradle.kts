@@ -157,4 +157,9 @@ dependencies {
     implementation("com.google.zxing:core:3.5.2")
     implementation("com.google.mlkit:barcode-scanning:17.2.0")
 
+    //firebase
+    implementation(platform("com.google.firebase:firebase-bom:32.5.0"))
+    implementation("com.google.firebase:firebase-storage-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+
 }

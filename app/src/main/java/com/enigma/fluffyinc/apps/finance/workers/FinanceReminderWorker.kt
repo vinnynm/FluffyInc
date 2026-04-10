@@ -32,6 +32,7 @@ class FinanceReminderWorker(
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setDefaults(NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE)
             .build()
 
         nm.notify("${type}_$id".hashCode(), notification)

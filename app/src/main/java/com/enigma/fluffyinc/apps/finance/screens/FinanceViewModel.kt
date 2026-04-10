@@ -107,7 +107,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
                 amount = payment.amount,
                 description = payment.description,
                 source = payment.source,
-                category = "scheduled payments",
+                category = payment.category,
                 date = currentTime
             ))
 
@@ -150,6 +150,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
             "weekly" -> calendar.add(Calendar.WEEK_OF_YEAR, 1)
             "monthly" -> calendar.add(Calendar.MONTH, 1)
             "annually" -> calendar.add(Calendar.YEAR, 1)
+            "daily" -> calendar.add(Calendar.DAY_OF_YEAR, 1)
         }
 
         return calendar.timeInMillis
@@ -319,6 +320,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
             "weekly" -> calendar.add(Calendar.WEEK_OF_YEAR, 1)
             "monthly" -> calendar.add(Calendar.MONTH, 1)
             "annually" -> calendar.add(Calendar.YEAR, 1)
+            "daily" -> calendar.add(Calendar.DAY_OF_YEAR, 1)
         }
 
         val loan = Loan(
