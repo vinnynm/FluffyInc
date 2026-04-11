@@ -7,44 +7,46 @@ package com.enigma.fluffyinc.apps.games.lexicon.model
 /**
  * Controls how well the AI plays.
  *
- * [vocabCoverage]   – fraction of the full word library the AI "knows"
- *                     (randomly sampled once at construction time, so each
- *                     game feels slightly different at the same difficulty).
- * [pickTopN]        – the AI finds all legal moves, then picks randomly from
- *                     the top-N by score.  1 = always best, higher = more
- *                     human-like variance.
+ * [vocabCoverage]     – fraction of the full word library the AI "knows"
+ *                       (randomly sampled once at construction time, so each
+ *                       game feels slightly different at the same difficulty).
  * [exchangeThreshold] – AI exchanges tiles when its best possible score is
- *                     below this value (0 = never exchanges).
+ *                       below this value (0 = never exchanges).
+ *
+ * Move selection strategy (applied after all legal moves are sorted best→worst,
+ * list size = x):
+ *
+ *  EASY   – picks randomly from the BOTTOM  min(x/4, 6)  moves (worst plays).
+ *  MEDIUM – picks randomly from the MIDDLE  min(10, x)   moves centred on the
+ *            median index.
+ *  HARD   – picks randomly from the TOP     min(x/4, 6)  moves (best plays,
+ *            but not always the single best).
+ *  EXPERT – always picks the single best move (index 0).
  */
 enum class AiDifficulty(
     val displayName: String,
     val vocabCoverage: Float,
-    val pickTopN: Int,
     val exchangeThreshold: Int
 ) {
     EASY(
-        displayName        = "Easy",
-        vocabCoverage      = 0.4f,   // reduced from 0.20
-        pickTopN           = 10,       // increased from 8
-        exchangeThreshold  = 6        // decreased from 8
+        displayName       = "Easy",
+        vocabCoverage     = 0.4f,
+        exchangeThreshold = 6
     ),
     MEDIUM(
-        displayName        = "Medium",
-        vocabCoverage      = 0.6f,   // reduced from 0.55
-        pickTopN           = 8,        // increased from 4
-        exchangeThreshold  = 10       // decreased from 12
+        displayName       = "Medium",
+        vocabCoverage     = 0.6f,
+        exchangeThreshold = 10
     ),
     HARD(
-        displayName        = "Hard",
-        vocabCoverage      = 0.850f,   // reduced from 0.85
-        pickTopN           = 6,        // increased from 2
-        exchangeThreshold  = 16       // decreased from 18
+        displayName       = "Hard",
+        vocabCoverage     = 0.85f,
+        exchangeThreshold = 16
     ),
     EXPERT(
-        displayName        = "Expert",
-        vocabCoverage      = 1.00f,   // full library
-        pickTopN           = 1,        // always plays the best scoring move
-        exchangeThreshold  = 22
+        displayName       = "Expert",
+        vocabCoverage     = 1.00f,
+        exchangeThreshold = 22
     )
 }
 
@@ -183,10 +185,57 @@ class AiOpponent(
             return AiDecision.ExchangeTiles
         }
 
-        // Pick from top-N to add human-like variance on lower difficulties
-        val topN = sorted.take(difficulty.pickTopN)
-        val chosen = topN.random()
-        return AiDecision.PlayWord(chosen)
+        return AiDecision.PlayWord(pickMove(sorted))
+    }
+
+    // ── Difficulty-aware move picker ───────────────────────────────────────
+
+    /**
+     * Selects one move from [sorted] (descending by score, size = x) according
+     * to the current difficulty:
+     *
+     *  EASY   → random pick from the BOTTOM min(x/4, 6) moves (weakest plays).
+     *           If x/4 > 6 the pool is capped at 6; otherwise x/4 is used,
+     *           with a minimum of 1 so there is always something to pick.
+     *
+     *  MEDIUM → random pick from the MIDDLE min(10, x) moves centred on the
+     *           median index.  When x ≤ 10 the entire list is used.
+     *
+     *  HARD   → random pick from the TOP min(x/4, 6) moves (best plays without
+     *           always being perfect).  Same cap logic as EASY but at the front.
+     *
+     *  EXPERT → always returns the single best move (index 0).
+     */
+    private fun pickMove(sorted: List<AiMove>): AiMove {
+        val x = sorted.size
+        return when (difficulty) {
+
+            AiDifficulty.EASY -> {
+                // Pool size: x/4, but no larger than 6; at least 1
+                val poolSize = if (x / 4 > 6) 6 else maxOf(x / 4, 1)
+                // Take from the END of the list (worst moves)
+                sorted.takeLast(poolSize).random()
+            }
+
+            AiDifficulty.MEDIUM -> {
+                // Pool size: min(10, x), centred on the median
+                val poolSize = minOf(10, x)
+                val medianIdx = x / 2
+                val halfPool = poolSize / 2
+                val from = maxOf(0, medianIdx - halfPool)
+                val to   = minOf(x, from + poolSize)
+                sorted.subList(from, to).random()
+            }
+
+            AiDifficulty.HARD -> {
+                // Pool size: x/4, but no larger than 6; at least 1
+                val poolSize = if (x / 4 > 6) 6 else maxOf(x / 4, 1)
+                // Take from the START of the list (best moves)
+                sorted.take(poolSize).random()
+            }
+
+            AiDifficulty.EXPERT -> sorted.first()
+        }
     }
 
     // ── Move finder ────────────────────────────────────────────────────────

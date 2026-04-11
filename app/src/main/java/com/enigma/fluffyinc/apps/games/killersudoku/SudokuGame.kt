@@ -147,7 +147,7 @@ fun SudokuPlayScreen(
     
     // The "puzzle" state contains the solution and the cage structure (which we mostly ignore for basic Sudoku)
     var currentPuzzle by remember {
-        mutableStateOf(generator.generate(difficulty))
+        mutableStateOf(generator.generate(difficulty.toLevel()))
     }
 
     // Board state
@@ -162,7 +162,7 @@ fun SudokuPlayScreen(
 
     fun startNewGame(newDiff: Difficulty) {
         difficulty = newDiff
-        currentPuzzle = generator.generate(newDiff)
+        currentPuzzle = generator.generate(newDiff.toLevel())
         board = createInitialBoard(currentPuzzle, newDiff)
         selectedCell = null
         noteMode = false
@@ -313,6 +313,7 @@ fun SudokuPlayScreen(
                                 isHighlighted = isHighlighted,
                                 isSameValue = isSameValue,
                                 isError = isError,
+                                level = difficulty.toLevel(),
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                                 onClick = { selectedCell = if (isSelected) null else row to col }
                             )
@@ -373,7 +374,8 @@ fun SudokuPlayScreen(
         NumberPad(
             onNumber = ::placeNumber,
             board = board,
-            selectedCell = selectedCell
+            selectedCell = selectedCell,
+            level = difficulty.toLevel()
         )
 
         Spacer(Modifier.height(8.dp))
@@ -389,6 +391,7 @@ fun BasicSudokuCell(
     isHighlighted: Boolean,
     isSameValue: Boolean,
     isError: Boolean,
+    level: Level,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -454,7 +457,7 @@ fun BasicSudokuCell(
             )
         } else if (cell.notes.isNotEmpty()) {
             Box(Modifier.fillMaxSize()) {
-                NotesGrid(notes = cell.notes)
+                NotesGrid(notes = cell.notes, level = level)
             }
         }
     }

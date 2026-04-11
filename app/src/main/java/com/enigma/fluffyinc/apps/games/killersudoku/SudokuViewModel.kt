@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import androidx.core.content.edit
 
 data class SudokuSaveData(
     val difficulty: Difficulty,
@@ -54,9 +55,9 @@ class SudokuViewModel : ViewModel() {
 
         val json = gson.toJson(saveData)
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_SAVE_STATE, json)
-            .apply()
+            .edit {
+                putString(KEY_SAVE_STATE, json)
+            }
         hasSavedGame = true
     }
 
@@ -97,7 +98,7 @@ class SudokuViewModel : ViewModel() {
 
     fun startNewGame(newDiff: Difficulty, generator: KillerSudokuGenerator) {
         difficulty = newDiff
-        val puzzle = generator.generate(newDiff)
+        val puzzle = generator.generate(level = newDiff.toLevel())
         currentPuzzle = puzzle
         board = createInitialBoard(puzzle, newDiff)
         selectedCell = null
