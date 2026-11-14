@@ -1,18 +1,18 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
 
 android {
     namespace = "com.enigma.fluffyinc"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.enigma.fluffyinc"
         minSdk = 30
-        targetSdk = 36
+        //noinspection EditedTargetSdkVersion
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
 
@@ -31,9 +31,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-    kotlinOptions {
-        jvmTarget = "11"
     }
     buildFeatures {
         compose = true
@@ -64,16 +61,16 @@ dependencies {
     implementation(libs.androidx.biometric)
 
     // Navigation
-    implementation("androidx.navigation:navigation-compose:2.7.5")
+    implementation("androidx.navigation:navigation-compose:2.9.8")
 
     // ViewModel
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
 
     // Media3 ExoPlayer
-    implementation("androidx.media3:media3-exoplayer:1.7.1")
-    implementation("androidx.media3:media3-ui:1.2.0")
-    implementation("androidx.media3:media3-common:1.7.1")
-    implementation("androidx.media3:media3-session:1.7.1")
+    implementation("androidx.media3:media3-exoplayer:1.10.1")
+    implementation("androidx.media3:media3-ui:1.10.1")
+    implementation("androidx.media3:media3-common:1.10.1")
+    implementation("androidx.media3:media3-session:1.10.1")
 
     // Palette for color extraction
     implementation("androidx.palette:palette-ktx:1.0.0")
@@ -97,15 +94,15 @@ dependencies {
     // --- CHARTS ---
     implementation ("ma.hu:compose-charts:0.3.5")
 
-    implementation("com.google.accompanist:accompanist-pager:0.28.0")
-    implementation("com.google.accompanist:accompanist-pager-indicators:0.28.0")
+    implementation("com.google.accompanist:accompanist-pager:0.36.0")
+    implementation("com.google.accompanist:accompanist-pager-indicators:0.36.0")
 
-    implementation("io.coil-kt:coil-compose:2.4.0")
-    implementation("com.google.accompanist:accompanist-systemuicontroller:0.32.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
 
 
     // For WebView
-    implementation("androidx.webkit:webkit:1.9.0")
+    implementation("androidx.webkit:webkit:1.16.0")
 
     // For document file handling
     implementation("androidx.documentfile:documentfile:1.0.1")
@@ -132,16 +129,16 @@ dependencies {
 // Coroutines for async parsing
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    implementation("androidx.room:room-runtime:2.6.0")
-    implementation("androidx.room:room-ktx:2.6.0")
-    ksp("androidx.room:room-compiler:2.6.0")
+    implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
+    ksp("androidx.room:room-compiler:2.8.4")
 
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.datastore:datastore-preferences:1.1.2")
 
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
     implementation("androidx.compose.material:material-icons-core:1.7.8")
 
-    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+    implementation("com.google.accompanist:accompanist-permissions:0.36.0")
 
 
     // Charts - using Vico

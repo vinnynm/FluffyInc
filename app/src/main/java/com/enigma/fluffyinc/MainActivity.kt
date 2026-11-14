@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,11 +19,13 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.enigma.fluffyinc.apps.processors.scheduleEventReminder
 import com.enigma.fluffyinc.apps.readables.epublibrary.epubviewmodel.EpubReaderViewModel
 import com.enigma.fluffyinc.navigation.MainNavigation
 import com.enigma.fluffyinc.ui.theme.FluffyIncTheme
 
 class MainActivity : FragmentActivity() {
+    @RequiresPermission(Manifest.permission.SCHEDULE_EXACT_ALARM)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -69,5 +72,8 @@ class MainActivity : FragmentActivity() {
         } else {
             requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
         }
+
     }
+
+
 }

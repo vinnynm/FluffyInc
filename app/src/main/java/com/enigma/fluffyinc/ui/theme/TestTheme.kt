@@ -177,7 +177,7 @@ fun Icicle(modifier: Modifier = Modifier) {
                         lineTo(0f, size.height * 0.6f)
                         close()
                     },
-                    color = Color.White.copy(alpha = 0.28f)
+                    color = Color.White.copy(alpha = 0.3f)
                 )
 
                 // Bottom depth shadow
