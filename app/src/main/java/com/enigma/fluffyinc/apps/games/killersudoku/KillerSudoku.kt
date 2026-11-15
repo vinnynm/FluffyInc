@@ -1,6 +1,7 @@
 package com.enigma.fluffyinc.apps.games.killersudoku
 
 import android.annotation.SuppressLint
+import com.enigma.fluffyinc.ui.core.StatChip
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -887,18 +888,6 @@ fun KillerSudokuGameBoard(
         )
 
         Spacer(Modifier.height(8.dp))
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STAT CHIP
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-fun StatChip(label: String, value: String, accent: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, color = accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Text(label, color = Color(0xFF8892B0), fontSize = 10.sp, letterSpacing = 1.sp)
     }
 }
 

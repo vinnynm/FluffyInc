@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.enigma.fluffyinc.apps.games.betweenle.model.DistanceHint
 import com.enigma.fluffyinc.apps.games.betweenle.model.GuessFeedback
 import com.enigma.fluffyinc.apps.games.betweenle.model.GuessResult
-import com.betweenle.game.ui.theme.*
+import com.enigma.fluffyinc.apps.games.betweenle.ui.theme.*
 
 @Composable
 fun GuessRow(

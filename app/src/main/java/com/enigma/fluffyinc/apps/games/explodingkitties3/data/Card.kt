@@ -1,6 +1,6 @@
 package com.enigma.fluffyinc.apps.games.explodingkitties3.data
 
-import com.enigma.fluffyinc.games.explodingkitties3.data.types.CardType
+import com.enigma.fluffyinc.apps.games.explodingkitties3.data.types.CardType
 import kotlinx.serialization.Serializable
 
 

@@ -19,7 +19,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.betweenle.game.ui.theme.PrimaryGreen
+import com.enigma.fluffyinc.apps.games.betweenle.ui.theme.PrimaryGreen
 
 @Composable
 fun InputRow(

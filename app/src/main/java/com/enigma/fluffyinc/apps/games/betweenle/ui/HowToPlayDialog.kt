@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.betweenle.game.ui.theme.*
+import com.enigma.fluffyinc.apps.games.betweenle.ui.theme.*
 
 @Composable
 fun HowToPlayDialog(onDismiss: () -> Unit) {

@@ -8,12 +8,14 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Search
+import com.enigma.fluffyinc.ui.core.AppCard
+import com.enigma.fluffyinc.ui.core.AppScaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,10 +42,11 @@ fun StoryListScreen(navController: NavController, viewModel: StoryViewModel) {
     val pagerState = rememberPagerState()
     val scope = rememberCoroutineScope()
 
+    AppScaffold(
+        title = "Stories"
+    ) { paddingValues ->
     Column(
-        modifier = Modifier.fillMaxSize().background(
-            color = MaterialTheme.colors.surface
-        )
+        modifier = Modifier.fillMaxSize().padding(paddingValues)
     ) {
         OutlinedTextField(
             value = searchQuery,
@@ -54,10 +57,7 @@ fun StoryListScreen(navController: NavController, viewModel: StoryViewModel) {
         )
 
         TabRow(
-            selectedTabIndex = pagerState.currentPage,
-            indicator = { tabPositions ->
-                TabRowDefaults.Indicator(Modifier.pagerTabIndicatorOffset(pagerState, tabPositions))
-            }
+            selectedTabIndex = pagerState.currentPage
         ) {
             categories.forEachIndexed { index, title ->
                 Tab(
@@ -82,6 +82,7 @@ fun StoryListScreen(navController: NavController, viewModel: StoryViewModel) {
             StoryGrid(stories = filteredStories, viewModel = viewModel, navController = navController)
         }
     }
+    }
 }
 
 @Composable
@@ -103,26 +104,25 @@ fun StoryGrid(stories: List<Story>, viewModel: StoryViewModel, navController: Na
 
 @Composable
 fun StoryCard(story: Story, viewModel: StoryViewModel, onClick: () -> Unit) {
-    Card(
+    AppCard(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.8f)
-            .clickable(onClick = onClick),
-        elevation = 4.dp,
-        shape = RoundedCornerShape(12.dp)
+            .aspectRatio(0.8f),
+        onClick = onClick,
+        contentPadding = 12.dp
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Default.Book,
                     contentDescription = null,
                     modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colors.primary.copy(alpha = 0.4f)
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                 )
             }
             Text(
                 text = story.title,
-                style = MaterialTheme.typography.subtitle1,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -133,8 +133,8 @@ fun StoryCard(story: Story, viewModel: StoryViewModel, onClick: () -> Unit) {
             ) {
                 Text(
                     text = story.category,
-                    style = MaterialTheme.typography.caption,
-                    color = Color.Gray
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 IconButton(
                     onClick = {
@@ -146,7 +146,7 @@ fun StoryCard(story: Story, viewModel: StoryViewModel, onClick: () -> Unit) {
                     Icon(
                         imageVector = if (story.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                         contentDescription = "Bookmark",
-                        tint = MaterialTheme.colors.primary,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
                     )
                 }

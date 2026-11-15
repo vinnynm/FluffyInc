@@ -11,13 +11,13 @@ import com.enigma.fluffyinc.apps.games.explodingkitties3.data.Player
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.states.GameMode
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.states.GameState
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.states.GameUiState
-import com.enigma.fluffyinc.games.explodingkitties3.data.types.AIDifficulty
-import com.enigma.fluffyinc.games.explodingkitties3.data.types.CardType
-import com.enigma.fluffyinc.games.explodingkitties3.data.types.PlayerType
+import com.enigma.fluffyinc.apps.games.explodingkitties3.data.types.AIDifficulty
+import com.enigma.fluffyinc.apps.games.explodingkitties3.data.types.CardType
+import com.enigma.fluffyinc.apps.games.explodingkitties3.data.types.PlayerType
 import com.enigma.fluffyinc.apps.games.explodingkitties3.game.gamelogic.AIPlayer
 import com.enigma.fluffyinc.apps.games.explodingkitties3.game.gamelogic.GameAction
 import com.enigma.fluffyinc.apps.games.explodingkitties3.game.gamelogic.GameStateUpdate
-import com.enigma.fluffyinc.games.explodingkitties3.game.processors.NetworkManager
+import com.enigma.fluffyinc.apps.games.explodingkitties3.game.processors.NetworkManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

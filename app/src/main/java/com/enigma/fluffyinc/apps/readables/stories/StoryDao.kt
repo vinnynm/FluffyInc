@@ -1,4 +1,4 @@
-package com.enigma.fluffyinc.readables.stories
+package com.enigma.fluffyinc.apps.readables.stories
 
 import androidx.room.*
 import com.enigma.fluffyinc.apps.readables.stories.Story

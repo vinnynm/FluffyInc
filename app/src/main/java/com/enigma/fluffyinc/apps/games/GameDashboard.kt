@@ -24,7 +24,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import com.enigma.fluffyinc.navigation.Screens
+import com.enigma.fluffyinc.ui.core.AppCard
+import com.enigma.fluffyinc.ui.core.AppScaffold
 
 sealed class GameType(val title: String, val icon: ImageVector, val color: Color, val route: String) {
     data object ExplodingKittens : GameType("Exploding Kittens", Icons.Default.Pets, Color(0xFFFF1744), "exploding_kittens")
@@ -39,7 +42,7 @@ sealed class GameType(val title: String, val icon: ImageVector, val color: Color
 }
 
 @Composable
-fun GameDashboard(onGameSelected: (String) -> Unit) {
+fun GameDashboard(onGameSelected: (String) -> Unit, onBack: (() -> Unit)? = null) {
     val games = listOf(
         GameType.ExplodingKittens,
         GameType.WildTactics,
@@ -52,28 +55,15 @@ fun GameDashboard(onGameSelected: (String) -> Unit) {
         GameType.LightsOut
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFF121212), Color(0xFF1E1E1E))
-                )
-            )
-            .padding(16.dp)
-    ) {
-        Text(
-            "GAME HUB",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Black,
-            color = Color.White,
-            modifier = Modifier.padding(vertical = 24.dp)
-        )
-
+    AppScaffold(title = "Games", onBack = onBack) { paddingValues ->
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
             items(games) { game ->
                 GameCard(game = game, onClick = { onGameSelected(game.route) })
@@ -84,22 +74,18 @@ fun GameDashboard(onGameSelected: (String) -> Unit) {
 
 @Composable
 fun GameCard(game: GameType, onClick: () -> Unit) {
-    Card(
+    AppCard(
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = game.color.copy(alpha = 0.15f)),
-        border = BorderStroke(1.dp, game.color.copy(alpha = 0.5f))
+            .height(160.dp),
+        onClick = onClick
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // The game's own colour stays as a small accent on the icon only.
             Icon(
                 imageVector = game.icon,
                 contentDescription = null,
@@ -109,10 +95,9 @@ fun GameCard(game: GameType, onClick: () -> Unit) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = game.title,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
             )
         }
     }

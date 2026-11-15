@@ -1,7 +1,6 @@
 package com.enigma.fluffyinc.apps.games.absurdle.ui.theme
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.enigma.fluffyinc.apps.games.absurdle.model.TileColor
@@ -10,28 +9,17 @@ import com.enigma.fluffyinc.apps.games.absurdle.model.TileColor
 val ColorGreen     = Color(0xFF538D4E)
 val ColorYellow    = Color(0xFFB59F3B)
 val ColorGray      = Color(0xFF3A3A3C)
-val ColorPurple    = Color(0xFF6B21A8)   // brand accent
-val ColorPurpleLight = Color(0xFFA855F7)
-val ColorBackground = Color(0xFF0D0D18)  // very dark blue-black
-val ColorSurface    = Color(0xFF16162A)
 val ColorBorder     = Color(0xFF3A3A5C)
-val ColorText       = Color(0xFFE8E8F0)
-val ColorSubtle     = Color(0xFF6B6B8A)
 
-private val DarkScheme = darkColorScheme(
-    primary      = ColorPurpleLight,
-    secondary    = ColorYellow,
-    background   = ColorBackground,
-    surface      = ColorSurface,
-    onBackground = ColorText,
-    onSurface    = ColorText,
-    outline      = ColorBorder,
-    error        = Color(0xFFCF6679)
-)
+// Accents now follow the app-wide (dynamic) colour scheme instead of a fixed purple.
+val ColorPurple: Color @Composable get() = MaterialTheme.colorScheme.primary
+val ColorPurpleLight: Color @Composable get() = MaterialTheme.colorScheme.primary
+val ColorSubtle: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 
 @Composable
 fun AbsurdleTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = DarkScheme, content = content)
+    // Uses the app-wide FluffyIncTheme; kept as a pass-through so call sites stay stable.
+    content()
 }
 
 fun tileBackground(color: TileColor): Color = when (color) {

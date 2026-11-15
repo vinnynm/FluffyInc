@@ -1,4 +1,4 @@
-package com.enigma.fluffyinc.games.explodingkitties3.data.types
+package com.enigma.fluffyinc.apps.games.explodingkitties3.data.types
 
 enum class PlayerType {
     HUMAN,

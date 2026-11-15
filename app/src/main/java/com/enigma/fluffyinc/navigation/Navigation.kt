@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -44,7 +46,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.enigma.fluffyinc.R
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.enigma.fluffyinc.ui.core.AppCard
+import com.enigma.fluffyinc.ui.core.AppScaffold
 import com.enigma.fluffyinc.apps.finance.FinanceApp
 import com.enigma.fluffyinc.apps.games.GameDashboard
 import com.enigma.fluffyinc.apps.games.absurdle.viewmodel.AbsurdleViewModel
@@ -78,9 +82,10 @@ fun MainNavigation() {
         composable(Screens.Finance.route) { FinanceApp() }
         composable(Screens.Readables.route) { ReadingMainScreen() }
         composable(Screens.Games.route) { 
-            GameDashboard(onGameSelected = { route ->
-                navController.navigate(route)
-            })
+            GameDashboard(
+                onGameSelected = { route -> navController.navigate(route) },
+                onBack = { navController.popBackStack() }
+            )
         }
         composable("exploding_kittens") {
             val gameViewModel: GameViewModel = viewModel()
@@ -149,79 +154,31 @@ fun MainNavigation() {
 data class MenuItem(
     val route: String,
     val title: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector?,
-    @param:DrawableRes
-    val image:  Int,
-    val color: Color = Color.Blue,
-    val color2: Color = Color.DarkGray
+    val icon: ImageVector
 )
 
 val menuItems = listOf(
-    MenuItem(Screens.Finance.route, "Finance", Icons.Default.Money, R.drawable.beard_kitty, color = Color.Green.copy(.7f)),
-    MenuItem(Screens.Readables.route, "Readables", Icons.Default.Book, R.drawable.beard_kitty, color = Color.Yellow.copy(.7f)),
-    MenuItem(Screens.Games.route, "Games", Icons.Default.Games, R.drawable.beard_kitty, color = Color.Red.copy(.7f)),
-    MenuItem(Screens.Lists.route, "Lists", Icons.AutoMirrored.Filled.List, R.drawable.beard_kitty, color = Color.Blue.copy(.7f)),
-    MenuItem(Screens.Settings.route, "Settings", Icons.Default.Settings, R.drawable.beard_kitty, color = Color.Magenta.copy(.7f)),
+    MenuItem(Screens.Finance.route, "Finance", Icons.Default.Money),
+    MenuItem(Screens.Readables.route, "Readables", Icons.Default.Book),
+    MenuItem(Screens.Games.route, "Games", Icons.Default.Games),
+    MenuItem(Screens.Lists.route, "Lists", Icons.AutoMirrored.Filled.List),
+    MenuItem(Screens.Settings.route, "Settings", Icons.Default.Settings),
 )
 
 @Composable
 fun HomeScreen(navController: NavHostController) {
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ){
-        Image(
-            painter = painterResource(id = R.drawable.flowerback),
-            contentDescription = "Background",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.FillBounds
-        )
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ){
-            // Optimized: Moved random colors/brush out of recomposition or stabilized them
-            val headlineBrush = remember {
-                Brush.linearGradient(
-                    listOf(
-                        Color(0xFF6200EE),
-                        Color(0xFF03DAC5),
-                        Color(0xFF3700B3)
-                    )
-                )
-            }
-
-            Text(
-                text = "Welcome",
-                modifier = Modifier
-                    .padding(top = 16.dp, end = 16.dp)
-                    .fillMaxWidth(.7f)
-                    .shadow(elevation = 4.dp, shape = MaterialTheme.shapes.medium.copy(topStart = CornerSize(0.dp), bottomStart = CornerSize(0.dp)))
-                    .background(brush = Brush.linearGradient(colors = listOf(Color.Blue.copy(.3f), Color.Transparent)), shape = MaterialTheme.shapes.medium.copy(topStart = CornerSize(0.dp), bottomStart = CornerSize(0.dp)))
-                    .border(width = 4.dp, brush = Brush.linearGradient(colors = listOf(Color.Transparent, Color.Blue.copy(.3f), MaterialTheme.colorScheme.background)), shape = MaterialTheme.shapes.medium.copy(topStart = CornerSize(0.dp), bottomStart = CornerSize(0.dp)))
-                    .padding(6.dp),
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    brush = headlineBrush
-                )
-            )
-            Scaffold (
-                containerColor = Color.Transparent
-            ){ paddingValues ->
-                Box(
-                    modifier = Modifier
-                        .padding(paddingValues)
-                        .fillMaxSize()
-                ) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(150.dp),
-                        contentPadding = PaddingValues(8.dp),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        items(menuItems) { item ->
-                            MenuItemCard(item) {
-                                navController.navigate(item.route)
-                            }
-                        }
-                    }
-                }
+    AppScaffold(title = "FluffyInc") { paddingValues ->
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(150.dp),
+            contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            items(menuItems) { item ->
+                MenuItemCard(item) { navController.navigate(item.route) }
             }
         }
     }
@@ -229,43 +186,29 @@ fun HomeScreen(navController: NavHostController) {
 
 @Composable
 fun MenuItemCard(item: MenuItem, onClick: () -> Unit) {
-    Column(
+    AppCard(
         modifier = Modifier
-            .padding(8.dp)
-            .clickable(onClick = onClick)
-            .background(
-                brush = Brush.linearGradient(colors = listOf(item.color, item.color2, Color.Transparent, Color.Transparent)),
-                shape = MaterialTheme.shapes.medium
-            )
-            .border(
-                width = 1.dp,
-                brush = Brush.linearGradient(colors = listOf(item.color, item.color2, Color.Transparent).reversed()),
-                shape = MaterialTheme.shapes.medium
-            )
-            .padding(2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .fillMaxWidth()
+            .aspectRatio(1f),
+        onClick = onClick
     ) {
-        if (item.icon != null) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             Icon(
                 imageVector = item.icon,
-                contentDescription = item.title,
-                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                contentDescription = null,
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.primary
             )
-        } else {
-            Icon(
-                painter = painterResource(item.image),
-                contentDescription = item.title,
-                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                tint = Color.Unspecified
+            Text(
+                text = item.title,
+                modifier = Modifier.padding(top = 12.dp),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
-        Text(
-            text = item.title,
-            modifier = Modifier.padding(8.dp),
-            style = MaterialTheme.typography.titleMedium.copy(
-                brush = Brush.linearGradient(colors = listOf(item.color, item.color2))
-            ),
-        )
     }
 }

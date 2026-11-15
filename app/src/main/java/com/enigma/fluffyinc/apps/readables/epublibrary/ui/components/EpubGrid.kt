@@ -1,4 +1,4 @@
-package com.enigma.fluffyinc.readables.epublibrary.ui.components
+package com.enigma.fluffyinc.apps.readables.epublibrary.ui.components
 
 
 import androidx.compose.foundation.Image

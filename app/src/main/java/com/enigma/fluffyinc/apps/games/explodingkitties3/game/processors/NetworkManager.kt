@@ -1,4 +1,4 @@
-package com.enigma.fluffyinc.games.explodingkitties3.game.processors
+package com.enigma.fluffyinc.apps.games.explodingkitties3.game.processors
 
 
 import android.content.Context

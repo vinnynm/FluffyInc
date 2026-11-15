@@ -1,8 +1,5 @@
-package com.betweenle.game.ui.theme
+package com.enigma.fluffyinc.apps.games.betweenle.ui.theme
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.enigma.fluffyinc.apps.games.betweenle.model.GuessFeedback
@@ -28,42 +25,6 @@ val LightBorder    = Color(0xFFD3D6DA)
 val DarkText       = Color(0xFFFFFFFF)
 val LightText      = Color(0xFF1A1A1B)
 val SubtleText     = Color(0xFF818384)
-
-private val DarkColors = darkColorScheme(
-    primary          = PrimaryGreen,
-    onPrimary        = Color.White,
-    secondary        = PrimaryYellow,
-    background       = DarkBackground,
-    surface          = DarkSurface,
-    onBackground     = DarkText,
-    onSurface        = DarkText,
-    outline          = DarkBorder,
-    error            = PrimaryRed,
-)
-
-private val LightColors = lightColorScheme(
-    primary          = PrimaryGreen,
-    onPrimary        = Color.White,
-    secondary        = PrimaryYellow,
-    background       = Color(0xFFF9F9F9),
-    surface          = Color.White,
-    onBackground     = LightText,
-    onSurface        = LightText,
-    outline          = LightBorder,
-    error            = PrimaryRed,
-)
-
-@Composable
-fun BetweenleTheme(
-    darkTheme: Boolean = true,
-    content: @Composable () -> Unit
-) {
-    val colors = if (darkTheme) DarkColors else LightColors
-    MaterialTheme(
-        colorScheme = colors,
-        content = content
-    )
-}
 
 // ── Guess tile colours ────────────────────────────────────────────────────────
 

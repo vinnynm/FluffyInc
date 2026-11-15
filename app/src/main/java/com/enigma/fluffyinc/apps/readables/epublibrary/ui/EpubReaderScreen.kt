@@ -15,8 +15,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.enigma.fluffyinc.apps.readables.epublibrary.data.EpubContent
 import com.enigma.fluffyinc.apps.readables.epublibrary.epubviewmodel.ReaderTheme
-import com.enigma.fluffyinc.readables.epublibrary.ui.components.ChapterListDialog
-import com.enigma.fluffyinc.readables.epublibrary.ui.components.ChapterNavigationBar
+import com.enigma.fluffyinc.apps.readables.epublibrary.ui.components.ChapterListDialog
+import com.enigma.fluffyinc.apps.readables.epublibrary.ui.components.ChapterNavigationBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

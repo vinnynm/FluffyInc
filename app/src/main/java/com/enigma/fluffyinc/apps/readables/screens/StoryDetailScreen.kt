@@ -18,15 +18,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.CircularProgressIndicator
-import androidx.compose.material.Divider
-import androidx.compose.material.FloatingActionButton
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.HorizontalDivider
+import com.enigma.fluffyinc.ui.core.AppScaffold
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
@@ -60,7 +60,6 @@ import com.enigma.fluffyinc.R
 import com.enigma.fluffyinc.apps.readables.Colors
 import com.enigma.fluffyinc.apps.readables.stories.Story
 import com.enigma.fluffyinc.apps.readables.viewmodel.StoryViewModel
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.flow.collectLatest
 
 @SuppressLint("LocalContextResourcesRead")
@@ -87,15 +86,6 @@ fun StoryDetailScreen(viewModel: StoryViewModel, storyId: Int, navController: Na
         }
         return
     }
-
-    val primary =MaterialTheme.colors.primary
-    val vibrant =MaterialTheme.colors.onPrimary
-    // State for colors extracted from the image
-    var vibrantColor by remember { mutableStateOf(primary) }
-    var onVibrantColor by remember { mutableStateOf(vibrant) }
-
-    // System UI Controller for status bar color
-    val systemUiController = rememberSystemUiController()
 
     // Lazy list state to track scroll position for last read position
     val scrollState = rememberLazyListState(initialFirstVisibleItemIndex = story.lastPosition)
@@ -135,78 +125,14 @@ fun StoryDetailScreen(viewModel: StoryViewModel, storyId: Int, navController: Na
             .build()
     )
 
-    val dark = isSystemInDarkTheme()
-    val myColors = mutableMapOf<String,Color?>()
-
-
-
-    LaunchedEffect(painter.state) {
-        val imageLoader = ImageLoader(context)
-        val request = ImageRequest.Builder(context)
-            .data(imageModel)
-            .allowHardware(false)
-            .build()
-        val result = (imageLoader.execute(request).drawable as? BitmapDrawable)?.bitmap
-        if (result != null) {
-            Palette.from(result).generate { it ->
-                it?.vibrantSwatch?.let { swatch ->
-                    vibrantColor = Color(swatch.rgb)
-                    onVibrantColor = Color(swatch.bodyTextColor)
-                }
-                val swatch = it?.dominantSwatch
-                val dominant = swatch?.rgb?.let { it1 -> Color(it1) }
-                val dominantText = swatch?.titleTextColor?.let { rgb-> Color(rgb) }
-                val dominantBodyTextColor = swatch?.bodyTextColor?.let { rgb-> Color(rgb) }
-                val vibrantSwatch = (if (dark) it?.lightVibrantSwatch else it?.darkVibrantSwatch)?.rgb?.let { rgb-> Color(rgb) }
-                val vibrantTextSwatch = (if (dark) it?.lightVibrantSwatch else it?.darkVibrantSwatch)?.bodyTextColor?.let { rgb-> Color(rgb) }
-                val mutedSwatch = (if (dark) it?.lightMutedSwatch else it?.darkMutedSwatch)?.rgb?.let { rgb-> Color(rgb) }
-
-                myColors[Colors.Dominant.name] = dominant
-                myColors[Colors.DominantText.name] = dominantText
-                myColors[Colors.Vibrant.name] = vibrantSwatch
-                myColors[Colors.Muted.name] = mutedSwatch
-                myColors[Colors.DominantText.name] = dominantText
-                myColors[Colors.VibrantText.name] = vibrantTextSwatch
-                myColors[Colors.DominantBodyText.name] = dominantBodyTextColor
-            }
-
-            Log.d("mooooooooooooooooon",myColors.toString())
-
-        }
-    }
-
-
-
-
-    // Determine if the vibrant color is dark or light for status bar icon colors
-    val isDark = ColorUtils.calculateLuminance(vibrantColor.toArgb()) < 0.5
-    val isDarker =ColorUtils.calculateLuminance((myColors[Colors.Dominant.name]?:Color.Gray).toArgb()) < 0.5
-    SideEffect {
-        systemUiController.setStatusBarColor(
-            color = myColors[Colors.Dominant.name]?:Color.Gray.copy(.4f),
-            darkIcons = !isDarker
-        )
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(story.title, color = myColors[Colors.DominantText.name] ?:Color.Yellow.copy(.6f)) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = onVibrantColor)
-                    }
-                },
-                backgroundColor = myColors[Colors.Vibrant.name] ?:Color.Gray,
-                elevation = 4.dp
-            )
-        },
+    AppScaffold(
+        title = story.title,
+        onBack = { navController.navigateUp() },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { shareText(context, story.title, "Read this amazing story!") },
-                backgroundColor = myColors[Colors.Vibrant.name] ?:Color.Gray
+                onClick = { shareText(context, story.title, "Read this amazing story!") }
             ) {
-                Icon(Icons.Default.Share, contentDescription = "Share Story", tint = myColors[Colors.Dominant.name] ?:Color.Blue.copy(.4f))
+                Icon(Icons.Default.Share, contentDescription = "Share Story")
             }
         }
     ) { paddingValues ->
@@ -231,16 +157,14 @@ fun StoryDetailScreen(viewModel: StoryViewModel, storyId: Int, navController: Na
             // Story Metadata
             item {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = story.title, style = MaterialTheme.typography.h4)
+                    Text(text = story.title, style = MaterialTheme.typography.headlineMedium)
                     Spacer(modifier = Modifier.height(4.dp))
-                    myColors.get(Colors.Dominant.name)?.let {
-                        Text(
-                            text = "Category: ${story.category}",
-                            style = MaterialTheme.typography.subtitle1,
-                            color = it
-                        )
-                    }
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    Text(
+                        text = "Category: ${story.category}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                 }
             }
 

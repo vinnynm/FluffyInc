@@ -1,4 +1,4 @@
-package com.notesapp.presentation.components
+package com.enigma.fluffyinc.lists.presentation.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicText

@@ -14,7 +14,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.*
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -53,12 +53,13 @@ import com.enigma.fluffyinc.apps.readables.repository.Repository
 import com.enigma.fluffyinc.apps.readables.screens.StoryDetailScreen
 import com.enigma.fluffyinc.apps.readables.screens.StoryListScreen
 import com.enigma.fluffyinc.apps.readables.stories.Story
-import com.enigma.fluffyinc.readables.stories.StoryDao
+import com.enigma.fluffyinc.apps.readables.stories.StoryDao
 import com.enigma.fluffyinc.apps.readables.viewmodel.PoemViewModel
 import com.enigma.fluffyinc.apps.readables.viewmodel.StoryViewModel
 import com.enigma.fluffyinc.apps.readables.epublibrary.EpubReaderApp
 import com.google.accompanist.pager.*
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.enigma.fluffyinc.ui.core.AppScaffold
+import com.enigma.fluffyinc.ui.core.AppCard
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -78,7 +79,7 @@ fun ReadingMainScreen() {
     Scaffold(
         bottomBar = { BottomNavigationBar(navController) }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
+        Box(modifier = Modifier.padding(padding).consumeWindowInsets(padding)) {
             Navigation(navController, PoemViewModel(repository = repository), StoryViewModel(repository = repository))
         }
     }
@@ -138,12 +139,12 @@ fun ReadablesHomeScreen(navController: NavController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colors.background)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         Text(
             text = "Readables Library",
-            style = MaterialTheme.typography.h4,
+            style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(bottom = 24.dp, top = 8.dp)
         )
 
@@ -154,16 +155,12 @@ fun ReadablesHomeScreen(navController: NavController) {
             modifier = Modifier.fillMaxWidth()
         ) {
             items(items) { item ->
-                Card(
-                    modifier = Modifier
-                        .aspectRatio(1f)
-                        .clickable { navController.navigate(item.route) },
-                    elevation = 4.dp,
-                    shape = RoundedCornerShape(16.dp),
-                    backgroundColor = MaterialTheme.colors.surface
+                AppCard(
+                    modifier = Modifier.aspectRatio(1f),
+                    onClick = { navController.navigate(item.route) }
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
@@ -171,12 +168,12 @@ fun ReadablesHomeScreen(navController: NavController) {
                             imageVector = item.icon,
                             contentDescription = item.title,
                             modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colors.primary
+                            tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = item.title,
-                            style = MaterialTheme.typography.h6,
+                            style = MaterialTheme.typography.titleLarge,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -195,11 +192,11 @@ fun BottomNavigationBar(navController: NavHostController) {
         NavigationItem.Stories,
         NavigationItem.Epub
     )
-    BottomNavigation {
+    NavigationBar {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
         items.forEach { item ->
-            BottomNavigationItem(
+            NavigationBarItem(
                 icon = { Icon(item.icon, contentDescription = item.title) },
                 label = { Text(text = item.title) },
                 selected = currentRoute?.startsWith(item.route) == true,
@@ -244,7 +241,8 @@ fun PoemListScreen(navController: NavController, viewModel: PoemViewModel) {
     val pagerState = rememberPagerState()
     val scope = rememberCoroutineScope()
 
-    Scaffold(
+    AppScaffold(
+        title = "Poems",
         floatingActionButton = {
             FloatingActionButton(onClick = { navController.navigate("addPoem") }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Poem")
@@ -263,10 +261,7 @@ fun PoemListScreen(navController: NavController, viewModel: PoemViewModel) {
 
             // Category Tabs
             TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                indicator = { tabPositions ->
-                    TabRowDefaults.Indicator(Modifier.pagerTabIndicatorOffset(pagerState, tabPositions))
-                }
+                selectedTabIndex = pagerState.currentPage
             ) {
                 category.forEachIndexed { index, title ->
                     Tab(
@@ -313,26 +308,25 @@ fun PoemList(poems: List<Poem>, viewModel: PoemViewModel, navController: NavCont
 
 @Composable
 fun PoemCard(poem: Poem, viewModel: PoemViewModel, onClick: () -> Unit) {
-    Card(
+    AppCard(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.8f)
-            .clickable(onClick = onClick),
-        elevation = 4.dp,
-        shape = RoundedCornerShape(12.dp)
+            .aspectRatio(0.8f),
+        onClick = onClick,
+        contentPadding = 12.dp
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.MenuBook,
                     contentDescription = null,
                     modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colors.primary.copy(alpha = 0.4f)
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                 )
             }
             Text(
                 text = poem.title,
-                style = MaterialTheme.typography.subtitle1,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -343,8 +337,8 @@ fun PoemCard(poem: Poem, viewModel: PoemViewModel, onClick: () -> Unit) {
             ) {
                 Text(
                     text = poem.category,
-                    style = MaterialTheme.typography.caption,
-                    color = Color.Gray
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 IconButton(
                     onClick = {
@@ -356,7 +350,7 @@ fun PoemCard(poem: Poem, viewModel: PoemViewModel, onClick: () -> Unit) {
                     Icon(
                         imageVector = if (poem.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                         contentDescription = "Bookmark",
-                        tint = MaterialTheme.colors.primary,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -373,17 +367,9 @@ fun AddPoemScreen(navController: NavController, viewModel: PoemViewModel) {
     var category by remember { mutableStateOf("Love") }
     val categories = listOf("Love", "Life", "Sad")
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Add New Poem") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
+    AppScaffold(
+        title = "Add New Poem",
+        onBack = { navController.navigateUp() }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -441,17 +427,9 @@ fun AddStoryScreen(navController: NavController, viewModel: StoryViewModel) {
     var category by remember { mutableStateOf("Adult") }
     val categories = listOf("Funny", "Adult", "Long")
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Add New Story") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
+    AppScaffold(
+        title = "Add New Story",
+        onBack = { navController.navigateUp() }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -502,7 +480,7 @@ fun AddStoryScreen(navController: NavController, viewModel: StoryViewModel) {
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategorySelector(
     categories: List<String>,
@@ -523,8 +501,7 @@ fun CategorySelector(
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },
-            colors = ExposedDropdownMenuDefaults.textFieldColors(),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
         )
         ExposedDropdownMenu(
             expanded = expanded,
@@ -532,13 +509,12 @@ fun CategorySelector(
         ) {
             categories.forEach { selectionOption ->
                 DropdownMenuItem(
+                    text = { Text(text = selectionOption) },
                     onClick = {
                         onCategorySelected(selectionOption)
                         expanded = false
                     }
-                ) {
-                    Text(text = selectionOption)
-                }
+                )
             }
         }
     }
@@ -565,12 +541,6 @@ fun PoemDetailScreen(viewModel: PoemViewModel, poemId: Int, navController: NavCo
         return
     }
 
-    var primary = MaterialTheme.colors.primary
-    var onPrimary = MaterialTheme.colors.onPrimary
-
-    var vibrantColor by remember { mutableStateOf(primary) }
-    var onVibrantColor by remember { mutableStateOf(onPrimary) }
-    val systemUiController = rememberSystemUiController()
     val imageModel = poem.imageUrl ?: getFallbackImageForPoemCategory(poem.category)
     val painter = rememberAsyncImagePainter(
         model = ImageRequest.Builder(context)
@@ -580,51 +550,14 @@ fun PoemDetailScreen(viewModel: PoemViewModel, poemId: Int, navController: NavCo
             .build()
     )
 
-
-
-    LaunchedEffect(painter.state) {
-        val imageLoader = ImageLoader(context)
-        val request = ImageRequest.Builder(context)
-            .data(imageModel)
-            .allowHardware(false)
-            .build()
-        val result = (imageLoader.execute(request).drawable as? BitmapDrawable)?.bitmap
-        if (result != null) {
-            Palette.from(result).generate { palette ->
-                palette?.vibrantSwatch?.let { swatch ->
-                    vibrantColor = Color(swatch.rgb)
-                    onVibrantColor = Color(swatch.bodyTextColor)
-                }
-            }
-        }
-    }
-
-
-
-    val isDark = ColorUtils.calculateLuminance(vibrantColor.toArgb()) < 0.5
-    SideEffect {
-        systemUiController.setStatusBarColor(color = vibrantColor, darkIcons = !isDark)
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(poem.title, color = onVibrantColor) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = onVibrantColor)
-                    }
-                },
-                backgroundColor = vibrantColor,
-                elevation = 4.dp
-            )
-        },
+    AppScaffold(
+        title = poem.title,
+        onBack = { navController.navigateUp() },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { sharePoem(context, poem.title, poem.content) },
-                backgroundColor = vibrantColor
+                onClick = { sharePoem(context, poem.title, poem.content) }
             ) {
-                Icon(Icons.Default.Share, contentDescription = "Share Poem", tint = onVibrantColor)
+                Icon(Icons.Default.Share, contentDescription = "Share Poem")
             }
         }
     ) { paddingValues ->
@@ -639,14 +572,14 @@ fun PoemDetailScreen(viewModel: PoemViewModel, poemId: Int, navController: NavCo
             }
             item {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = poem.title, style = MaterialTheme.typography.h4)
+                    Text(text = poem.title, style = MaterialTheme.typography.headlineMedium)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Category: ${poem.category}",
-                        style = MaterialTheme.typography.subtitle1,
-                        color = Color.Gray
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
                 }
             }
             item {

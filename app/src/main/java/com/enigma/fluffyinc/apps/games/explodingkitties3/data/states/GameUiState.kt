@@ -2,7 +2,7 @@ package com.enigma.fluffyinc.apps.games.explodingkitties3.data.states
 
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.Card
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.Player
-import com.enigma.fluffyinc.games.explodingkitties3.data.types.AIDifficulty
+import com.enigma.fluffyinc.apps.games.explodingkitties3.data.types.AIDifficulty
 import kotlinx.serialization.Serializable
 
 

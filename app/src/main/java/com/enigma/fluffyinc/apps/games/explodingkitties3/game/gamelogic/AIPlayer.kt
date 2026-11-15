@@ -2,8 +2,8 @@ package com.enigma.fluffyinc.apps.games.explodingkitties3.game.gamelogic
 
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.Card
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.Player
-import com.enigma.fluffyinc.games.explodingkitties3.data.types.AIDifficulty
-import com.enigma.fluffyinc.games.explodingkitties3.data.types.CardType
+import com.enigma.fluffyinc.apps.games.explodingkitties3.data.types.AIDifficulty
+import com.enigma.fluffyinc.apps.games.explodingkitties3.data.types.CardType
 import kotlin.random.Random
 // --- AI Player Logic ---
 class AIPlayer(private val difficulty: AIDifficulty) {

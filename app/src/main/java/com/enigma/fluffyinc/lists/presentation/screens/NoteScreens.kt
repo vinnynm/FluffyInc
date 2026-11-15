@@ -28,7 +28,7 @@ import com.enigma.fluffyinc.lists.presentation.components.ReminderPanel
 import com.enigma.fluffyinc.lists.presentation.components.SketchCanvas
 import com.enigma.fluffyinc.lists.presentation.components.sharePdf
 import com.enigma.fluffyinc.lists.presentation.navigation.Screen
-import com.notesapp.presentation.components.*
+import com.enigma.fluffyinc.lists.presentation.components.*
 import java.text.SimpleDateFormat
 import java.util.*
 

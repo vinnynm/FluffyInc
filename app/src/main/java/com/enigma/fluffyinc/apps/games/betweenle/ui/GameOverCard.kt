@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.enigma.fluffyinc.apps.games.betweenle.model.GameState
-import com.betweenle.game.ui.theme.PrimaryGreen
+import com.enigma.fluffyinc.apps.games.betweenle.ui.theme.PrimaryGreen
 
 @Composable
 fun GameOverCard(

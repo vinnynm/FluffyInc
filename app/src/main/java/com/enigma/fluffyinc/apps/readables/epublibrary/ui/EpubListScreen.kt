@@ -27,8 +27,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.enigma.fluffyinc.apps.readables.epublibrary.data.EpubFile
 import com.enigma.fluffyinc.apps.readables.epublibrary.epubviewmodel.EpubReaderUiState
-import com.enigma.fluffyinc.readables.epublibrary.ui.components.EpubGridItem
-import com.enigma.fluffyinc.readables.epublibrary.ui.components.EpubListItem
+import com.enigma.fluffyinc.apps.readables.epublibrary.ui.components.EpubGridItem
+import com.enigma.fluffyinc.apps.readables.epublibrary.ui.components.EpubListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,7 +1,5 @@
 package com.enigma.fluffyinc.apps.games.chromaword.ui.theme
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.enigma.fluffyinc.apps.games.chromaword.model.LetterColor
@@ -22,20 +20,10 @@ val SurfaceDark     = Color(0xFF1A1A1B)
 val OnSurface       = Color(0xFFFFFFFF)
 val SubtleGray      = Color(0xFF818384)
 
-private val DarkScheme = darkColorScheme(
-    primary      = ColorGreen,
-    secondary    = ColorYellow,
-    background   = BackgroundDark,
-    surface      = SurfaceDark,
-    onBackground = OnSurface,
-    onSurface    = OnSurface,
-    outline      = ColorEmpty,
-    error        = ColorRedAbsent
-)
-
 @Composable
 fun ChromaWordTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = DarkScheme, content = content)
+    // Uses the app-wide FluffyIncTheme; kept as a pass-through so call sites stay stable.
+    content()
 }
 
 // ── Mapping function used by tile composables ─────────────────────────────────

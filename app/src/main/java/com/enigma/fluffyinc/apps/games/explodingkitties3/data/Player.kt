@@ -1,7 +1,7 @@
 package com.enigma.fluffyinc.apps.games.explodingkitties3.data
 
-import com.enigma.fluffyinc.games.explodingkitties3.data.types.AIDifficulty
-import com.enigma.fluffyinc.games.explodingkitties3.data.types.PlayerType
+import com.enigma.fluffyinc.apps.games.explodingkitties3.data.types.AIDifficulty
+import com.enigma.fluffyinc.apps.games.explodingkitties3.data.types.PlayerType
 import kotlinx.serialization.Serializable
 
 @Serializable

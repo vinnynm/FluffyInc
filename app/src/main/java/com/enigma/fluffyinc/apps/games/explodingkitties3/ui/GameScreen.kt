@@ -26,7 +26,7 @@ import com.enigma.fluffyinc.apps.games.explodingkitties3.data.Card
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.states.GameMode
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.states.GameState
 import com.enigma.fluffyinc.apps.games.explodingkitties3.data.states.GameUiState
-import com.enigma.fluffyinc.games.explodingkitties3.data.types.AIDifficulty
+import com.enigma.fluffyinc.apps.games.explodingkitties3.data.types.AIDifficulty
 import com.enigma.fluffyinc.apps.games.explodingkitties3.game.GameOverScreen
 import com.enigma.fluffyinc.apps.games.explodingkitties3.game.GamePlayScreen
 import com.enigma.fluffyinc.apps.games.explodingkitties3.game.HandoffScreen

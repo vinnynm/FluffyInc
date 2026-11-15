@@ -1,5 +1,7 @@
 package com.enigma.fluffyinc.apps.games.lightsOut
 
+import com.enigma.fluffyinc.ui.core.StatChip
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -99,7 +101,7 @@ fun LightsOutScreen(vm: LightsOutViewModel = viewModel()) {
                 StatChip(
                     label = "LIT",
                     value = state.cells.sum().toString(),
-                    highlight = state.cells.sum() == 0
+                    accent = if (state.cells.sum() == 0) SolvedGlow else MaterialTheme.colorScheme.primary
                 )
             }
 
@@ -297,41 +299,6 @@ fun LightCell(
                     .background(Color.White.copy(alpha = 0.55f))
             )
         }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Stat chip
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-fun StatChip(label: String, value: String, highlight: Boolean = false) {
-    Column(
-        modifier            = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFF161828))
-            .border(
-                1.dp,
-                if (highlight) SolvedGlow.copy(alpha = 0.6f) else Color(0xFF2E3555),
-                RoundedCornerShape(10.dp)
-            )
-            .padding(horizontal = 18.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text  = value,
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontWeight = FontWeight.Black,
-                color      = if (highlight) SolvedGlow else Color(0xFFFFD060)
-            )
-        )
-        Text(
-            text  = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                color        = Color(0xFF5A6380),
-                letterSpacing = 1.5.sp
-            )
-        )
     }
 }
 

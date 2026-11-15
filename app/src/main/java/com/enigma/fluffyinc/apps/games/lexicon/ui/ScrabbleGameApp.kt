@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.AlertDialog
@@ -65,7 +64,7 @@ import com.enigma.fluffyinc.apps.games.lexicon.ui.components.Rack
 import com.enigma.fluffyinc.apps.games.lexicon.ui.theme.LexiconTheme
 import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScrabbleGameApp(viewModel: ScrabbleGameViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

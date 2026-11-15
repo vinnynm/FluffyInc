@@ -3,7 +3,7 @@ package com.enigma.fluffyinc.apps.readables.repository
 import com.enigma.fluffyinc.apps.readables.poems.Poem
 import com.enigma.fluffyinc.apps.readables.poems.PoemDao
 import com.enigma.fluffyinc.apps.readables.stories.Story
-import com.enigma.fluffyinc.readables.stories.StoryDao
+import com.enigma.fluffyinc.apps.readables.stories.StoryDao
 import kotlinx.coroutines.flow.Flow
 
 class Repository(private val poemDao: PoemDao, private val storyDao: StoryDao) {
